@@ -1,0 +1,309 @@
+{{!-- Hidden divs with data passed from the Express server --}}
+<div id="clientKey" class="hidden">{{ clientKey }}</div>
+
+<div id="payment-page" class="klarna-page">
+  <div class="checkout-container klarna-layout">
+    
+    {{!-- Payment Method Selection --}}
+    <div class="payment-section klarna-card">
+      <h2 class="section-title">Select your payment method</h2>
+
+      <div class="payment-method-header">
+        <div class="payment-method-logo" id="klarna-payment-logo"></div>
+        <h3 class="payment-method-title">Klarna</h3>
+      </div>
+
+      <div class="payment-container">
+        <div class="klarna-options-wrapper">
+          {{!-- Pay now --}}
+          <div class="klarna-option" id="klarna-paynow-wrapper">
+            <div class="klarna-label">Pay now</div>
+            <div id="klarna-paynow-container" class="klarna-component-slot"></div>
+          </div>
+
+          {{!-- Pay later --}}
+          <div class="klarna-option" id="klarna-paylater-wrapper">
+            <div class="klarna-label">Pay later</div>
+            <div id="klarna-paylater-container" class="klarna-component-slot"></div>
+          </div>
+
+          {{!-- Pay over time --}}
+          <div class="klarna-option" id="klarna-account-wrapper">
+            <div class="klarna-label">Pay over time</div>
+            <div id="klarna-account-container" class="klarna-component-slot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    {{!-- Order Summary --}}
+    <div class="order-summary-section klarna-card">
+      <h2 class="section-title">Order summary</h2>
+
+      <div class="order-summary-box">
+        <div class="order-item">
+          <div class="item-icon">
+            <img src="/images/sunglasses.png" alt="Sunglasses" class="item-image">
+          </div>
+          <div class="item-details">
+            <span class="item-name">Sunglasses</span>
+            <span class="item-price">€50.00</span>
+          </div>
+        </div>
+        
+        <div class="order-item">
+          <div class="item-icon">
+            <img src="/images/headphones.png" alt="Headphones" class="item-image">
+          </div>
+          <div class="item-details">
+            <span class="item-name">Headphones</span>
+            <span class="item-price">€50.00</span>
+          </div>
+        </div>
+        
+        <div class="order-divider"></div>
+        
+        <div class="order-total">
+          <span class="total-label">Total:</span>
+          <span class="total-amount">€100.00</span>
+          <span id="total-amount-formatted" class="amount-hidden">10000</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* --- Shell globale Klarna ------------------------------------------- */
+
+.klarna-page {
+  background: #f6f7fb;
+  padding: 40px 0;
+}
+
+/* Layout 2 colonnes, étiré en hauteur, responsive */
+.checkout-container.klarna-layout {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 32px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .checkout-container.klarna-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cartes principales (Klarna + Order summary) */
+.klarna-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 24px 28px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Header Klarna */
+.payment-method-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.payment-method-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* --- Bloc des produits Klarna -------------------------------------- */
+
+.payment-container {
+  margin-top: 8px;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Empile les 3 produits, centrés */
+.klarna-options-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  align-items: center;
+}
+
+/* Carte pour chaque option Klarna (pay now / later / over time) */
+.klarna-option {
+  width: 100%;
+  max-width: 480px;
+  padding: 10px 14px 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+
+.klarna-option:hover {
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Label de chaque produit Klarna */
+.klarna-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+/* Slot où le component Klarna est monté */
+.klarna-component-slot {
+  width: 100%;
+}
+
+/* Bouton Klarna centré, un peu plus étroit que la carte */
+.klarna-component-slot .adyen-checkout__button,
+.klarna-component-slot button {
+  display: flex;
+  justify-content: center;
+  width: auto;
+  min-width: 260px;
+  max-width: 100%;
+  margin: 8px auto 2px;
+  padding: 11px 22px;
+  font-size: 15px;
+  border-radius: 999px; /* pill */
+}
+
+/* --- Order summary -------------------------------------------------- */
+
+.order-summary-box {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 18px 18px 20px;
+  background: #f9fafb;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.item-icon .item-image {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.item-details {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.item-name {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.item-price {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.order-divider {
+  height: 1px;
+  background: rgba(148, 163, 184, 0.5);
+  margin: 10px 0;
+}
+
+.order-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.total-label {
+  font-size: 14px;
+  color: #111827;
+}
+
+.total-amount {
+  font-size: 16px;
+  color: #111827;
+}
+</style>
+
+
+
+{{!-- Adyen Component client code --}}
+<script type="text/javascript" src="/js/locales.js"></script>
+<script type="text/javascript" src="/js/currency.js"></script>
+<script type="text/javascript" src="/js/payment-methods/advancedFlow/klarna.js"></script>
+<script src="/js/payment-logos.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    PaymentLogos.loadLogo('klarna', document.getElementById('klarna-payment-logo'));
+  });
+  // Update order summary currency based on selected country
+  function updateOrderSummaryCurrency(countryId) {
+    const currency = getCurrencyForCountry(countryId);
+    const sunglassesPrice = document.getElementById('sunglasses-price');
+    const headphonesPrice = document.getElementById('headphones-price');
+    const totalAmount = document.getElementById('total-amount');
+    
+    if (sunglassesPrice) sunglassesPrice.textContent = formatPrice(5000, currency);
+    if (headphonesPrice) headphonesPrice.textContent = formatPrice(5000, currency);
+    if (totalAmount) totalAmount.textContent = formatPrice(10000, currency);
+  }
+  
+  // Listen for country changes
+  window.addEventListener('countryChanged', (event) => {
+    updateOrderSummaryCurrency(event.detail.countryId);
+  });
+  
+  // Update on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    const storedCountry = localStorage.getItem('selectedCountry');
+    console.log('Stored country from localStorage:', storedCountry);
+    
+    let countryId = 'NL'; // Default to Netherlands
+    
+    if (storedCountry) {
+      try {
+        const parsed = JSON.parse(storedCountry);
+        countryId = parsed.id || parsed;
+        console.log('Parsed country object, using ID:', countryId);
+      } catch (e) {
+        countryId = storedCountry;
+        console.log('Using stored country as string:', countryId);
+      }
+    }
+    
+    console.log('Final country ID for currency update:', countryId);
+    updateOrderSummaryCurrency(countryId);
+  });
+</script>
+

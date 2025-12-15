@@ -1,0 +1,95 @@
+<div class="main-container home-simple">
+  <header class="home-header">
+    <p class="integration-intro">
+      Pick a flow and an integration type, or generate a Pay by Link with the selected country.
+    </p>
+  </header>
+
+  <section class="flows-layout">
+    <!-- Ligne 1 : Sessions + Advanced -->
+    <div class="flows-row">
+      <!-- Sessions Flow -->
+      <article class="flow-card-simple">
+        <h2>Sessions Flow</h2>
+        <p class="flow-subtitle">
+          Simplified backend. Checkout SDK handles 3DS and orchestration.
+        </p>
+
+        <div class="flow-actions">
+          <a href="/checkout/dropin/sessionFlow" class="flow-link-primary">
+            Drop-in
+          </a>
+          <a href="/components/sessionFlow" class="flow-link-secondary">
+            Components
+          </a>
+        </div>
+
+        <p class="flow-caption">
+          When you want to minimise custom backend logic.
+        </p>
+      </article>
+
+      <!-- Advanced Flow -->
+      <article class="flow-card-simple">
+        <h2>Advanced Flow</h2>
+        <p class="flow-subtitle">
+          Full control: you call <code>/paymentMethods</code>,
+          <code>/payments</code>, <code>/payments/details</code>.
+        </p>
+
+        <div class="flow-actions">
+          <a href="/checkout/dropin/advancedFlow" class="flow-link-primary">
+            Drop-in
+          </a>
+          <a href="/components/advancedFlow" class="flow-link-secondary">
+            Components
+          </a>
+        </div>
+
+        <p class="flow-caption">
+          When you need custom routing, risk logic or advanced UX.
+        </p>
+      </article>
+    </div>
+
+    <!-- Ligne 2 : Pay by Link sous Sessions -->
+    <div class="flows-row">
+      <article class="flow-card-simple">
+        <h2>Pay by Link</h2>
+        <p class="flow-subtitle">
+          Create a payment link via API using the selected country &amp; locale.
+        </p>
+
+        <div class="flow-actions single">
+          <a href="/checkout/paybylink" class="flow-link-primary">
+            Create a payment link
+          </a>
+        </div>
+
+        <p class="flow-caption">
+          Ideal for invoices, remote payments, or quick back-office tests.
+        </p>
+      </article>
+
+  <article class="flow-card-simple">
+    <h2>Unscheduled Payments</h2>
+    <p class="flow-subtitle">
+      Charge a stored card without shopper interaction using a tokenised payment instrument.
+    </p>
+
+    <div class="flow-actions single">
+      <a href="/checkout/unscheduledCardOnFile" class="flow-link-primary">
+        Open Unscheduled Payment Tool
+      </a>
+    </div>
+
+    <p class="flow-caption">
+      Perfect for subscriptions, retries, or post-authorization operations.
+    </p>
+  </article>
+</div>
+
+
+
+  </section>
+</div>

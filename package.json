@@ -1,0 +1,31 @@
+{
+  "name": "adyen-checkout-example",
+  "version": "1.0.0",
+  "description": "Adyen Online Payments integration example using Sessions Flow",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "echo \"Linting not configured\" && exit 0",
+    "format": "echo \"Formatting not configured\" && exit 0",
+    "clean": "rm -rf node_modules package-lock.json && npm install"
+  },
+  "keywords": ["adyen", "payments", "checkout", "sessions-flow"],
+  "author": "Adyen",
+  "license": "MIT",
+  "dependencies": {
+    "@adyen/api-library": "^30.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.1",
+    "express-handlebars": "^8.0.1",
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

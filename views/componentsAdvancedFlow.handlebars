@@ -1,0 +1,87 @@
+<div class='main-container'>
+  <div class="info">
+    <h1>Payment Method Components</h1>
+    <p>Choose a payment method component to try the demo.</p>
+  </div>
+  
+  <div class="integration-cards components-cards">
+    <a href="/checkout/card/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="card-logo"></div>
+        <h2 class="card-title">Card</h2>
+      </div>
+    </a>
+    
+    <a href="/checkout/ideal/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="ideal-logo"></div>
+        <h2 class="card-title">iDEAL</h2>
+      </div>
+    </a>
+
+      <a href="/checkout/klarna/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="klarna-logo"></div>
+        <h2 class="card-title">Klarna</h2>
+      </div>
+    </a>
+
+    
+    <a href="/checkout/googlepay/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="googlepay-logo"></div>
+        <h2 class="card-title">Google Pay</h2>
+      </div>
+      
+    </a>
+        <a href="/checkout/applepay/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="applepay-logo"></div>
+        <h2 class="card-title">Apple Pay</h2>
+      </div>
+    </a>
+
+    <!-- 
+    
+    <a href="/checkout/sepa/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="sepa-logo"></div>
+        <h2 class="card-title">SEPA Direct Debit</h2>
+      </div>
+    </a>
+    
+    <a href="/checkout/vipps/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="vipps-logo"></div>
+        <h2 class="card-title">Vipps</h2>
+      </div>
+    </a>
+    
+    <a href="/checkout/mobilepay/advancedFlow" class="integration-card">
+      <div class="card-content">
+        <div class="card-logo" id="mobilepay-logo"></div>
+        <h2 class="card-title">MobilePay</h2>
+      </div>
+    </a>
+
+    --->
+
+
+
+
+
+
+
+  </div>
+  
+  <div class="back-link">
+    <a href="/" class="back-button">← Back to integration types</a>
+  </div>
+</div>
+
+<script src="/js/payment-logos.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    PaymentLogos.loadLogosForComponents();
+  });
+</script>

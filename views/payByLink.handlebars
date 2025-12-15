@@ -1,0 +1,95 @@
+<div class="checkout-main pbl-container">
+  <header class="pbl-header">
+    <h1>Pay by Link via API</h1>
+    <p class="pbl-intro">
+      Génère un lien de paiement en utilisant le pays et la devise sélectionnés
+      dans le footer. Idéal pour des factures, paiements à distance ou tests rapides.
+    </p>
+    <p class="pbl-context">
+      Pays courant (footer) : <span id="pbl-country-label">FR</span>
+    </p>
+  </header>
+
+  <div class="pbl-layout">
+    <!-- Carte formulaire -->
+    <section class="pbl-card">
+      <h2 class="pbl-card-title">Détails du lien</h2>
+
+      <div class="pbl-fields">
+        <div class="field">
+          <label for="pbl-shopper-reference">Shopper reference</label>
+          <input
+            id="pbl-shopper-reference"
+            type="text"
+            placeholder="pbl-YYYY-MM-DD"
+          />
+          <p class="field-hint">
+            Identifiant client (stable sur 24h par défaut).
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="pbl-shopper-email">Shopper email</label>
+          <input
+            id="pbl-shopper-email"
+            type="email"
+            placeholder="client@example.com"
+          />
+          <p class="field-hint">
+            Utilisé pour simuler l’envoi par email (optionnel en test).
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="pbl-amount">
+            Montant (en cents, ex&nbsp;: 100000 = 1000,00&nbsp;€)
+          </label>
+          <input
+            id="pbl-amount"
+            type="number"
+            min="1"
+            step="1"
+            value="100000"
+          />
+          <p class="field-hint">
+            La devise est dérivée du pays sélectionné dans le footer.
+          </p>
+        </div>
+      </div>
+
+      <button id="pbl-generate" class="button-primary pbl-generate-btn">
+        Générer le lien de paiement
+      </button>
+    </section>
+
+    <!-- Carte résultat -->
+    <section id="pbl-result" class="pbl-card pbl-result hidden">
+      <h2 class="pbl-card-title">Lien généré</h2>
+
+      <div class="pbl-result-row">
+        <label class="pbl-result-label" for="pbl-url-input">
+          Lien à partager
+        </label>
+        <div class="pbl-result-inline">
+          <input
+            id="pbl-url-input"
+            type="text"
+            class="pbl-url-input"
+            readonly
+          />
+          <button id="pbl-copy" type="button" class="button-secondary pbl-copy-btn">
+            Copier
+          </button>
+        </div>
+        <p class="field-hint">
+          Copie ce lien pour l’envoyer au client (email, chat, SMS…).
+        </p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Scripts partagés -->
+<script src="/js/countries.js"></script>
+<script src="/js/locales.js"></script>
+<script src="/js/payment-methods/payByLink.js"></script>

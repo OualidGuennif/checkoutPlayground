@@ -1,0 +1,98 @@
+<div class="checkout-main pbl-container">
+  <header class="pbl-header">
+    <h1>Tokenised Unscheduled Payments</h1>
+    <p class="pbl-intro">
+      Déclenche un paiement <code>UnscheduledCardOnFile</code> sur une carte déjà tokenisée,
+      sans interaction du shopper.
+    </p>
+    <p class="pbl-context">
+      Pays courant (footer) : <span id="unsched-country-label">FR</span>
+    </p>
+  </header>
+
+  <div class="pbl-layout">
+    <!-- Carte 1 : shopperReference -->
+    <section class="pbl-card">
+      <h2 class="pbl-card-title">1. Sélection du shopper</h2>
+
+      <div class="pbl-form-grid">
+        <div class="pbl-field">
+          <label for="unsched-shopper-reference" class="field-label">Shopper reference</label>
+          <input
+            id="unsched-shopper-reference"
+            class="field-input"
+            type="text"
+            placeholder="ex: shopper-123"
+          />
+          <p class="field-hint">
+            Doit correspondre au <code>shopperReference</code> utilisé lors du stockage de la carte.
+          </p>
+        </div>
+      </div>
+
+      <button id="unsched-load-cards" class="button-primary">
+        Charger les cartes stockées
+      </button>
+    </section>
+
+    <!-- Carte 2 : cartes éligibles -->
+    <section id="unsched-cards-section" class="pbl-card hidden">
+      <h2 class="pbl-card-title">2. Cartes disponibles</h2>
+
+      <div id="unsched-cards-list" class="unsched-cards-list">
+        <!-- Cartes insérées dynamiquement -->
+      </div>
+
+      <p class="field-hint">
+        Seules les cartes <code>scheme</code> éligibles à
+        <code>UnscheduledCardOnFile</code> sont affichées.
+      </p>
+    </section>
+
+    <!-- Carte 3 : paiement -->
+    <section id="unsched-payment-section" class="pbl-card hidden">
+      <h2 class="pbl-card-title">3. Déclencher un paiement</h2>
+
+      <div class="pbl-form-grid">
+        <div class="pbl-field">
+          <label for="unsched-order-ref" class="field-label">Order reference</label>
+          <input
+            id="unsched-order-ref"
+            class="field-input"
+            type="text"
+            placeholder="UNSCHED-001"
+          />
+        </div>
+
+        <div class="pbl-field">
+          <label for="unsched-amount" class="field-label">
+            Montant (minor units)
+          </label>
+          <input
+            id="unsched-amount"
+            class="field-input"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="5000"
+          />
+          <p class="field-hint">
+            Montant en minor units (ex: <code>5000</code> = 50.00 dans la devise du pays sélectionné).
+          </p>
+        </div>
+      </div>
+
+      <button id="unsched-pay" class="button-primary">
+        Débiter la carte sélectionnée
+      </button>
+
+      <pre id="unsched-result" class="pbl-result-box hidden"></pre>
+    </section>
+  </div>
+</div>
+
+<!-- Helpers déjà présents dans ton projet -->
+<script src="/js/countries.js"></script>
+<script src="/js/currency.js"></script>
+<script src="/js/locales.js"></script>
+<script src="/js/payment-methods/unscheduledCardOnFile.js"></script>
