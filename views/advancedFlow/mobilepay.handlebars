@@ -2,6 +2,20 @@
 <div id="clientKey" class="hidden">{{ clientKey }}</div>
 
 <div id="payment-page">
+    <div id="auth-overlay" class="auth-overlay" aria-live="polite" aria-busy="true">
+    <div class="auth-overlay-card">
+      <div class="auth-spinner" aria-hidden="true"></div>
+      <div class="auth-overlay-title">Authentification en cours…</div>
+      <div class="auth-overlay-subtitle">Merci de ne pas fermer cette fenêtre.</div>
+    </div>
+  </div>
+
+  <div id="threeDS2Modal" class="threeds-modal" hidden aria-hidden="true">
+    <div class="threeds-card">
+      <button id="threeDS2CloseBtn" type="button" aria-label="Close">✕</button>
+      <div id="threeDS2ActionMount"></div>
+    </div>
+  </div>
   <div class="checkout-container">
     {{!-- Payment Method Selection --}}
     <div class="payment-section">
@@ -52,7 +66,9 @@
 
 {{!-- Adyen Component client code --}}
 <script type="text/javascript" src="/js/payment-methods/advancedFlow/mobilepay.js"></script>
+<script type="text/javascript" src="/js/uiOverlay.js"></script>
 <script src="/js/payment-logos.js"></script>
+
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     PaymentLogos.loadLogo('mobilepay', document.getElementById('mobilepay-payment-logo'));

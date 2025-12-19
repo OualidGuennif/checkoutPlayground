@@ -192,6 +192,20 @@ async function createAdyenCheckout(paymentMethodsResponse, additionalSettings = 
  * -----------------------------------------------------------------*/
 
 async function startCheckout(countryCode = "FR") {
+
+
+  function cleanupLocal3DS() {
+  try { window.__threeDSActionComponent?.unmount?.(); } catch (_) {}
+  window.__threeDSActionComponent = null;
+  window.setThreeDS2Modal?.(false, { clear: true });
+}
+
+  cleanupLocal3DS();
+  window.setAuthOverlay?.(false);
+
+
+
+
   try {
     // Nettoyage de l'état précédent (unmount + reset containers)
     cleanupKlarnaComponents();
@@ -227,6 +241,7 @@ async function startCheckout(countryCode = "FR") {
 
     // 2) AdyenCheckout instance
     const checkout = await createAdyenCheckout(paymentMethodsResponse, additionalSettings);
+    window.PaymentHandlers.registerCreateFromAction(checkout.createFromAction.bind(checkout));
 
     const effectiveCountry = countryCode; // on se base sur le param (clair)
     const klarnaTypes = getKlarnaTypesForCountry(effectiveCountry, paymentMethodsResponse);

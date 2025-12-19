@@ -65,6 +65,18 @@ function handleOnPaymentFailed(resultCode) {
 --------------------------------------------------------- */
 async function startCheckout(countryCode= 'FR') {
 
+
+  function cleanupLocal3DS() {
+  try { window.__threeDSActionComponent?.unmount?.(); } catch (_) {}
+  window.__threeDSActionComponent = null;
+  window.setThreeDS2Modal?.(false, { clear: true });
+}
+
+  cleanupLocal3DS();
+  window.setAuthOverlay?.(false);
+
+
+
   if (componentInstance) {
     try { componentInstance.unmount(); } catch (e) {}
     componentInstance = null;
@@ -102,6 +114,7 @@ async function startCheckout(countryCode= 'FR') {
 
     console.log(paymentMethodsResponse);
     const checkout = await createAdyenCheckout(paymentMethodsResponse,additionalSettings);
+    window.PaymentHandlers.registerCreateFromAction(checkout.createFromAction.bind(checkout));
     
 
     componentInstance = new Dropin(checkout, {paymentMethodsConfiguration: {

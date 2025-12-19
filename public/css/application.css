@@ -1938,3 +1938,77 @@ a:hover {
     min-width: 100%;          /* dropdown full width sous le bouton */
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ===============================
+   3DS / Auth overlay
+=============================== */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;               /* caché par défaut */
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 9999;
+  padding: 16px;
+}
+
+.auth-overlay.is-open {
+  display: flex;
+}
+
+.auth-overlay-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(0, 17, 44, 0.12);
+  text-align: center;
+}
+
+.auth-overlay-title {
+  font-weight: 700;
+  color: #00112c;
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+.auth-overlay-subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.auth-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 17, 44, 0.15);
+  border-top-color: #00112c;
+  margin: 0 auto;
+  animation: authSpin 0.9s linear infinite;
+}
+
+@keyframes authSpin {
+  to { transform: rotate(360deg); }
+}
+

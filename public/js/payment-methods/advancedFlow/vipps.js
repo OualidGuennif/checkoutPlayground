@@ -28,6 +28,17 @@ async function createAdyenCheckout(session) {
 
 // Function to start checkout
 async function startCheckout() {
+
+  function cleanupLocal3DS() {
+  try { window.__threeDSActionComponent?.unmount?.(); } catch (_) {}
+  window.__threeDSActionComponent = null;
+  window.setThreeDS2Modal?.(false, { clear: true });
+}
+
+  cleanupLocal3DS();
+  window.setAuthOverlay?.(false);
+
+
   try {
     const session = await fetch('/api/sessions?type=vipps', {
       method: 'POST',
@@ -37,6 +48,7 @@ async function startCheckout() {
     }).then(response => response.json());
 
     const checkout = await createAdyenCheckout(session);
+    window.PaymentHandlers.registerCreateFromAction(checkout.createFromAction.bind(checkout));
     const vipps = new Redirect(checkout, {
       type: 'vipps'
     }).mount('#component-container');

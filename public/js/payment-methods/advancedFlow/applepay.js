@@ -64,6 +64,18 @@ function handleOnPaymentFailed(resultCode) {
 async function startCheckout(countryCode = 'FR') {
 
 
+  function cleanupLocal3DS() {
+  try { window.__threeDSActionComponent?.unmount?.(); } catch (_) {}
+  window.__threeDSActionComponent = null;
+  window.setThreeDS2Modal?.(false, { clear: true });
+}
+
+  cleanupLocal3DS();
+  window.setAuthOverlay?.(false);
+
+
+
+
   if (componentInstance) {
     try { componentInstance.unmount(); } catch (e) {}
     componentInstance = null;x
@@ -100,6 +112,7 @@ async function startCheckout(countryCode = 'FR') {
 
     console.log(paymentMethodsResponse);
     const checkout = await createAdyenCheckout(paymentMethodsResponse, additionalSettings);
+    window.__adyenCheckout = checkout;
 
     componentInstance = new ApplePay(checkout, {
       emailRequired: true,

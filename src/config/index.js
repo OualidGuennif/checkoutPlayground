@@ -114,6 +114,26 @@ const validateConfig = () => {
   return true;
 };
 
+function setAuthOverlay(open, label = "Authentification en cours…") {
+  const el = document.getElementById("auth-overlay");
+  if (!el) return;
+
+  el.classList.toggle("is-open", !!open);
+
+  const title = el.querySelector(".auth-overlay-title");
+  if (title && label) title.textContent = label;
+}
+
+function isThreeDS2Action(action) {
+  return !!action && action.type === "threeDS2";
+}
+
+function shouldHideOverlayForResultCode(resultCode) {
+  return ["Authorised","Refused","Cancelled","Error","Pending","Received"].includes(resultCode);
+}
+
+
+
 /**
  * Get currency for country
  */
@@ -235,5 +255,6 @@ module.exports = {
   getLocaleForCountry,
   getBaseUrl,
   getClientIp,
-  getDailyShopperReference
+  getDailyShopperReference,
+  setAuthOverlay
 };
