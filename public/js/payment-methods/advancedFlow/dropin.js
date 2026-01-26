@@ -1,9 +1,24 @@
-
+/* =========================================================
+   dropin-advanced.js  (ta page)
+   ✅ Ajouts UNIQUEMENT:
+   - unifiedReference + merchantOrderReference8 (digits only)
+   - pass those into PaymentHandlers options (so /orders + /payments share same reference)
+   (rien supprimé, rien refactoré)
+========================================================= */
 
 const clientKey = document.getElementById("clientKey").innerHTML;
 const { AdyenCheckout, Dropin } = window.AdyenWeb;
 const uuid = () => crypto.randomUUID();
 let componentInstance = null;
+
+// ✅ AJOUT: reference helpers (digits + storeId + hash)
+const STORE_ID = "OG-Store";
+function gen8Digits() {
+  return String(Math.floor(Math.random() * 100000000)).padStart(8, "0");
+}
+function genRefHash() {
+  return crypto.randomUUID(); // ✅ UUID complet avec tirets
+}
 
 
 /* --------------------------------------------------------
@@ -35,7 +50,14 @@ async function createAdyenCheckout(paymentMethodsResponse,additionalSettings={})
           "fr-FR": {
             "creditCard.securityCode.label": "CVV/CVC"
           }
-        }
+        },
+
+        // ✅ AJOUT: pass unified reference context to PaymentHandlers
+        storeId: additionalSettings.storeId,
+        orderDigits: additionalSettings.orderDigits,
+        refHash: additionalSettings.refHash,
+        unifiedReference: additionalSettings.unifiedReference,
+        merchantOrderReference8: additionalSettings.merchantOrderReference8
       }
     );
   console.log("PM RESPONSE FROM BACKEND", paymentMethodsResponse);
@@ -65,7 +87,6 @@ function handleOnPaymentFailed(resultCode) {
 --------------------------------------------------------- */
 async function startCheckout(countryCode= 'FR') {
 
-<<<<<<< HEAD
 
   function cleanupLocal3DS() {
   try { window.__threeDSActionComponent?.unmount?.(); } catch (_) {}
@@ -78,8 +99,6 @@ async function startCheckout(countryCode= 'FR') {
 
 
 
-=======
->>>>>>> 3ff7b21 (init)
   if (componentInstance) {
     try { componentInstance.unmount(); } catch (e) {}
     componentInstance = null;
@@ -92,13 +111,26 @@ async function startCheckout(countryCode= 'FR') {
   const amountElement = document.getElementById('total-amount-formatted');
   const amountValue = amountElement ? parseInt(amountElement.textContent, 10) : 999;
 
+  // ✅ AJOUT: build reference context ONCE per checkout start
+  const orderDigits = gen8Digits();
+  const merchantOrderReference8 = orderDigits; // digits-only, 8 chars
+  const refHash = genRefHash();
+  const unifiedReference = `${orderDigits}||${STORE_ID}||${refHash}`;
+
 
   const additionalSettings  = { 
     countryCode,
     shopperConversionId,
     shopperReference,
     currency,
-    amountValue
+    amountValue,
+
+    // ✅ AJOUT
+    storeId: STORE_ID,
+    orderDigits,
+    merchantOrderReference8,
+    refHash,
+    unifiedReference
   };
 
 
@@ -106,9 +138,18 @@ async function startCheckout(countryCode= 'FR') {
   console.log("amountElement:", amountElement);
   console.log("amountElement?.textContent:", amountElement?.textContent); 
 
+  // ✅ AJOUT: debug refs
+  console.log("REFS →", {
+    unifiedReference,
+    merchantOrderReference8,
+    storeId: STORE_ID,
+    orderDigits,
+    refHash
+  });
+
 
   try {
-    const paymentMethodsResponse = await fetch(`/api/paymentMethods?country=${encodeURIComponent(countryCode)}&shopperConversionId=${encodeURIComponent(shopperConversionId)}&shopperReference=${encodeURIComponent(shopperReference)}`, {
+    const paymentMethodsResponse = await fetch(`/api/paymentMethods?country=${encodeURIComponent(countryCode)}&shopperConversionId=${encodeURIComponent(shopperConversionId)}&shopperReference=${encodeURIComponent(shopperReference)}&amount=${encodeURIComponent(amountValue)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" }
     }).then(res => res.json());
@@ -117,10 +158,13 @@ async function startCheckout(countryCode= 'FR') {
 
     console.log(paymentMethodsResponse);
     const checkout = await createAdyenCheckout(paymentMethodsResponse,additionalSettings);
-<<<<<<< HEAD
+
+    // ✅ EXISTANT (3DS)
     window.PaymentHandlers.registerCreateFromAction(checkout.createFromAction.bind(checkout));
-=======
->>>>>>> 3ff7b21 (init)
+
+    // ✅ AJOUT: safe hook "comme 3DS" pour permettre checkout.update(...) depuis PaymentHandlers
+    window.PaymentHandlers.registerCheckoutUpdate(checkout.update.bind(checkout));
+
     
 
     componentInstance = new Dropin(checkout, {paymentMethodsConfiguration: {
@@ -151,6 +195,7 @@ async function startCheckout(countryCode= 'FR') {
   
   );
     componentInstance.mount('#dropin-container');
+    
 
   } catch (error) {
     console.error("Advanced Checkout Error:", error);

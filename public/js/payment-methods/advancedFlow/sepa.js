@@ -60,7 +60,6 @@ function handleOnPaymentFailed(resultCode) {
 
 // Function to start checkout
 async function startCheckout() {
-<<<<<<< HEAD
 
   function cleanupLocal3DS() {
   try { window.__threeDSActionComponent?.unmount?.(); } catch (_) {}
@@ -72,8 +71,6 @@ async function startCheckout() {
   window.setAuthOverlay?.(false);
 
 
-=======
->>>>>>> 3ff7b21 (init)
   try {
     const session = await fetch('/api/sessions', {
       method: 'POST',
@@ -83,10 +80,7 @@ async function startCheckout() {
     }).then(response => response.json());
 
     const checkout = await createAdyenCheckout(session);
-<<<<<<< HEAD
     window.PaymentHandlers.registerCreateFromAction(checkout.createFromAction.bind(checkout));
-=======
->>>>>>> 3ff7b21 (init)
     const sepa = new SepaDirectDebit(checkout, {
       countryCode: 'NL',
       holderName: true

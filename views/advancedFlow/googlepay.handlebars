@@ -2,7 +2,6 @@
 <div id="clientKey" class="hidden">{{ clientKey }}</div>
 
 <div id="payment-page">
-<<<<<<< HEAD
 
   <div id="auth-overlay" class="auth-overlay" aria-live="polite" aria-busy="true">
     <div class="auth-overlay-card">
@@ -20,30 +19,17 @@
   </div>
 
   <div class="checkout-container">
-=======
-  <div class="checkout-container">
-    {{!-- Payment Method Selection --}}
->>>>>>> 3ff7b21 (init)
     <div class="payment-section">
       <h2 class="section-title">Select your payment method</h2>
       <div class="payment-method-header">
         <div class="payment-method-logo" id="googlepay-payment-logo"></div>
         <h3 class="payment-method-title">Google Pay</h3>
       </div>
-<<<<<<< HEAD
       <div class="payment-container">
         <div id="component-container" class="payment"></div>
       </div>
     </div>
 
-=======
-    <div class="payment-container">
-        <div id="component-container" class="payment"></div>
-      </div>
-    </div>
-    
-    {{!-- Order Summary --}}
->>>>>>> 3ff7b21 (init)
     <div class="order-summary-section">
       <h2 class="section-title">Order summary</h2>
       <div class="order-summary-box">
@@ -56,11 +42,7 @@
             <span class="item-price">€50.00</span>
           </div>
         </div>
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 3ff7b21 (init)
         <div class="order-item">
           <div class="item-icon">
             <img src="/images/headphones.png" alt="Headphones" class="item-image">
@@ -70,15 +52,9 @@
             <span class="item-price">€50.00</span>
           </div>
         </div>
-<<<<<<< HEAD
 
         <div class="order-divider"></div>
 
-=======
-        
-        <div class="order-divider"></div>
-        
->>>>>>> 3ff7b21 (init)
         <div class="order-total">
           <span class="total-label">Total:</span>
           <span class="total-amount">€100.00</span>
@@ -89,7 +65,6 @@
   </div>
 </div>
 
-<<<<<<< HEAD
 {{!-- Scripts --}}
 <script type="text/javascript" src="/js/locales.js"></script>
 <script type="text/javascript" src="/js/currency.js"></script>
@@ -97,41 +72,21 @@
 <script type="text/javascript" src="/js/payment-methods/advancedFlow/googlepay.js"></script>
 <script src="/js/payment-logos.js"></script>
 
-=======
-
-
-
-
-{{!-- Adyen Component client code --}}
-<script type="text/javascript" src="/js/locales.js"></script>
-<script type="text/javascript" src="/js/currency.js"></script>
-<script type="text/javascript" src="/js/payment-methods/advancedFlow/googlepay.js"></script>
-<script src="/js/payment-logos.js"></script>
->>>>>>> 3ff7b21 (init)
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     PaymentLogos.loadLogo('googlepay', document.getElementById('googlepay-payment-logo'));
   });
-<<<<<<< HEAD
 
-=======
-  // Update order summary currency based on selected country
->>>>>>> 3ff7b21 (init)
   function updateOrderSummaryCurrency(countryId) {
     const currency = getCurrencyForCountry(countryId);
     const sunglassesPrice = document.getElementById('sunglasses-price');
     const headphonesPrice = document.getElementById('headphones-price');
     const totalAmount = document.getElementById('total-amount');
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> 3ff7b21 (init)
     if (sunglassesPrice) sunglassesPrice.textContent = formatPrice(5000, currency);
     if (headphonesPrice) headphonesPrice.textContent = formatPrice(5000, currency);
     if (totalAmount) totalAmount.textContent = formatPrice(10000, currency);
   }
-<<<<<<< HEAD
 
   window.addEventListener('countryChanged', (event) => {
     updateOrderSummaryCurrency(event.detail.countryId);
@@ -141,26 +96,10 @@
     const storedCountry = localStorage.getItem('selectedCountry');
     let countryId = 'FR';
 
-=======
-  
-  // Listen for country changes
-  window.addEventListener('countryChanged', (event) => {
-    updateOrderSummaryCurrency(event.detail.countryId);
-  });
-  
-  // Update on page load
-  document.addEventListener('DOMContentLoaded', () => {
-    const storedCountry = localStorage.getItem('selectedCountry');
-    console.log('Stored country from localStorage:', storedCountry);
-    
-    let countryId = 'FR'; // Default to Netherlands
-    
->>>>>>> 3ff7b21 (init)
     if (storedCountry) {
       try {
         const parsed = JSON.parse(storedCountry);
         countryId = parsed.id || parsed;
-<<<<<<< HEAD
       } catch (e) {
         countryId = storedCountry;
       }
@@ -169,17 +108,3 @@
     updateOrderSummaryCurrency(countryId);
   });
 </script>
-=======
-        console.log('Parsed country object, using ID:', countryId);
-      } catch (e) {
-        countryId = storedCountry;
-        console.log('Using stored country as string:', countryId);
-      }
-    }
-    
-    console.log('Final country ID for currency update:', countryId);
-    updateOrderSummaryCurrency(countryId);
-  });
-</script>
-
->>>>>>> 3ff7b21 (init)

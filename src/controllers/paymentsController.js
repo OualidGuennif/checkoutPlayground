@@ -4,11 +4,10 @@
  */
 
 const { asyncHandler } = require('../utils/errorHandler');
-const { getBaseUrl,getLocaleForCountry, getClientIp } = require('../config');
+const { getBaseUrl, getLocaleForCountry, getClientIp } = require('../config');
 const adyenService = require('../services/adyenService');
 const paymentService = require('../services/paymentService');
 const { shouldRouteCancelledToPending } = require('../utils/paymentMethodOverrides');
-
 
 /**
  * Create a payment session
@@ -17,10 +16,14 @@ const createSession = asyncHandler(async (req, res) => {
   try {
     // Generate unique order reference
     const orderRef = paymentService.generateOrderRef();
-    
+
     // Get base URL for redirects
     const baseUrl = getBaseUrl(req);
-    
+
+    // ✅ AJOUT: allow passing Adyen reference + merchantOrderReference from frontend
+    const bodyReference = req.body?.reference;
+    const bodyMerchantOrderReference = req.body?.merchantOrderReference;
+
     // Get payment method type and country from query parameters
     const paymentMethod = req.query.type || 'default';
     let selectedCountry = req.query.country || 'FR';
@@ -34,14 +37,18 @@ const createSession = asyncHandler(async (req, res) => {
     } else if (methodLower === 'ideal') {
       selectedCountry = 'NL';
     };
-    
+
     console.log('Session creation request:', {
       orderRef,
       paymentMethod,
       selectedCountry,
-      baseUrl
+      baseUrl,
+
+      // ✅ AJOUT
+      hasBodyReference: !!bodyReference,
+      hasBodyMerchantOrderReference: !!bodyMerchantOrderReference
     });
-    
+
     // Ensure we have just the country code, not an object
     if (typeof selectedCountry === 'string' && selectedCountry.startsWith('{')) {
       try {
@@ -52,15 +59,19 @@ const createSession = asyncHandler(async (req, res) => {
         selectedCountry = 'FR';
       }
     }
-    
+
     const sessionData = {
       orderRef,
       baseUrl,
       paymentMethod,
       selectedCountry,
-      countryCode: selectedCountry
+      countryCode: selectedCountry,
+
+      // ✅ AJOUT
+      reference: bodyReference,
+      merchantOrderReference: bodyMerchantOrderReference
     };
-    
+
     const response = await adyenService.createSession(sessionData);
 
     // Persist payment method metadata for later redirect handling
@@ -69,7 +80,7 @@ const createSession = asyncHandler(async (req, res) => {
     } catch (e) {
       console.warn('Failed to store order metadata', e);
     }
-    
+
     console.log('Session created with returnUrl:', `${baseUrl}/handleShopperRedirect?orderRef=${orderRef}`);
     res.json(response);
   } catch (error) {
@@ -83,7 +94,79 @@ const createSession = asyncHandler(async (req, res) => {
   }
 });
 
+/**
+ * ✅ Create order (partial payments: ANCV)
+ * POST /api/orders
+ * body: { amount: {currency, value}, reference: "..." }
+ */
+const createOrder = asyncHandler(async (req, res) => {
+  const { amount, reference } = req.body || {};
 
+  console.log("=== /api/orders ===");
+  console.log("Incoming payload:", { amount, reference });
+
+  try {
+    const response = await adyenService.createOrder({ amount, reference });
+    res.json(response);
+  } catch (error) {
+    console.error("createOrder FAILED:", {
+      message: error.message,
+      statusCode: error.statusCode,
+      errorCode: error.errorCode,
+      raw: error
+    });
+
+    res.status(error.statusCode ?? 500).json({
+      message: error.message,
+      errorCode: error.errorCode
+    });
+  }
+});
+
+/**
+ * Gift card: balance check
+ * POST /api/paymentMethods/balance
+ */
+const balanceCheckGiftcard = asyncHandler(async (req, res) => {
+  const { paymentMethod, amount } = req.body || {};
+
+  const payload = {
+    paymentMethod,
+    amount
+  };
+
+  const response = await adyenService.balanceCheckGiftcard(payload);
+  res.json(response);
+});
+
+/**
+ * ✅ Cancel order (partial payments)
+ * POST /api/orders/cancel
+ * body: { order: { pspReference, orderData } }
+ */
+const cancelOrder = asyncHandler(async (req, res) => {
+  const { order } = req.body || {};
+
+  console.log("=== /api/orders/cancel ===");
+  console.log("Incoming payload:", { hasOrder: !!order });
+
+  try {
+    const response = await adyenService.cancelOrder({ order });
+    res.json(response);
+  } catch (error) {
+    console.error("cancelOrder FAILED:", {
+      message: error.message,
+      statusCode: error.statusCode,
+      errorCode: error.errorCode,
+      raw: error
+    });
+
+    res.status(error.statusCode ?? 500).json({
+      message: error.message,
+      errorCode: error.errorCode
+    });
+  }
+});
 
 /**
  * Submit a payment (Advanced Flow)
@@ -92,16 +175,13 @@ const submitPayment = asyncHandler(async (req, res) => {
   const paymentData = req.body;
   console.log(paymentData);
 
-
   const baseUrl = getBaseUrl(req);
   const shopperIP = getClientIp(req);
-
 
   paymentData.additionalDataNetwork = {
     shopperIP,
     baseUrl,
   };
-
 
   console.log("=== /api/payments (ADVANCED FLOW) ===");
   console.log("Incoming payload:", {
@@ -112,7 +192,12 @@ const submitPayment = asyncHandler(async (req, res) => {
     hasRedirectResult: !!paymentData.redirectResult,
     hasShopperIP: !!paymentData.additionalDataNetwork.shopperIP,
     hasBaseUrl: !!paymentData.additionalDataNetwork.baseUrl,
-    hasShopperReference: !!paymentData.additionalData.shopperReference
+    hasShopperReference: !!paymentData.additionalData.shopperReference,
+    hasOrder: !!paymentData.order,
+
+    // ✅ AJOUT
+    hasReference: !!paymentData.reference,
+    hasMerchantOrderReference: !!paymentData.merchantOrderReference
   });
 
   try {
@@ -137,7 +222,6 @@ const submitPayment = asyncHandler(async (req, res) => {
     });
   }
 });
-
 
 /**
  * Submit payment details (redirect or additionalDetails)
@@ -179,16 +263,17 @@ const submitPaymentDetails = asyncHandler(async (req, res) => {
  */
 const getPaymentMethods = asyncHandler(async (req, res) => {
   const selectedCountry = req.query.country;
-  const selectedShopperConversionId = req.query.shopperConversionId ;
-  const selectedShopperReference = req.query.shopperReference ;
-  console.log("=== /api/paymentMethods (ADVANCED FLOW) ===");
+  const selectedShopperConversionId = req.query.shopperConversionId;
+  const selectedShopperReference = req.query.shopperReference;
+  const selectedAmount = req.query.amount;
 
+  console.log("=== /api/paymentMethods (ADVANCED FLOW) ===");
 
   // 1️⃣ Lire les données du body (POST)
   const {
     countryCode = selectedCountry,
-    amount = { currency: "EUR", value: 1000 },
-    shopperLocale = getLocaleForCountry(selectedCountry ),
+    amount = { currency: "EUR", value: selectedAmount },
+    shopperLocale = getLocaleForCountry(selectedCountry),
     shopperConversionId = selectedShopperConversionId,
     shopperReference = selectedShopperReference
   } = req.body || {};
@@ -232,13 +317,6 @@ const getPaymentMethods = asyncHandler(async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
 /**
  * Handle shopper redirect
  */
@@ -248,12 +326,12 @@ const handleShopperRedirect = asyncHandler(async (req, res) => {
   console.log('Query params:', Object.keys(req.query));
   console.log('Body keys:', Object.keys(req.body || {}));
   console.log('Headers keys:', Object.keys(req.headers));
-  
+
   try {
     // Create the payload for submitting payment details
     const redirect = req.method === "GET" ? req.query : req.body;
     const details = {};
-    
+
     if (redirect.redirectResult) {
       details.redirectResult = redirect.redirectResult;
     } else if (redirect.payload) {
@@ -261,7 +339,7 @@ const handleShopperRedirect = asyncHandler(async (req, res) => {
     } else {
       throw new Error('Missing payment details');
     }
-    
+
     console.log('Redirect details:', details);
 
     // Validate order reference
@@ -277,9 +355,7 @@ const handleShopperRedirect = asyncHandler(async (req, res) => {
     if (response.resultCode) {
       paymentService.storePaymentStatus(orderRef, response.resultCode);
       console.log(`Payment status stored for ${orderRef}: ${response.resultCode}`);
-      
-      // If payment status is "Received" or "Pending", note that this is a transient state
-      // The status will be updated via webhooks once processing completes
+
       if (response.resultCode === 'Received' || response.resultCode === 'Pending') {
         console.log(`Payment ${orderRef} is in transient state: ${response.resultCode}. Final status will be updated via webhook.`);
       }
@@ -290,11 +366,10 @@ const handleShopperRedirect = asyncHandler(async (req, res) => {
       redirectResult: redirect.redirectResult || redirect.payload,
       sessionId: redirect.sessionId
     };
-    
+
     // Encode the redirect data to pass to result page
     const encodedRedirectData = encodeURIComponent(JSON.stringify(redirectData));
 
-    // Redirect based on result code
     // Fetch stored metadata to enable method-specific handling (e.g., MobilePay workaround)
     const metadata = paymentService.getOrderMetadata(orderRef) || {};
     const method = (metadata.paymentMethod || '').toLowerCase();
@@ -312,11 +387,9 @@ const handleShopperRedirect = asyncHandler(async (req, res) => {
         res.redirect(`/result/failed?orderRef=${orderRef}&redirectData=${encodedRedirectData}`);
         break;
       case "Error":
-        // Treat generic Error as failed
         res.redirect(`/result/failed?orderRef=${orderRef}&redirectData=${encodedRedirectData}`);
         break;
       case "Cancelled":
-        // Workaround sandbox-specific behavior only (decoupled for easy removal)
         if (shouldRouteCancelledToPending(method, metaCountry)) {
           console.log(`Workaround active: routing Cancelled to pending for order ${orderRef} (method=${method || 'unknown'}, country=${metaCountry})`);
           res.redirect(`/result/pending?orderRef=${orderRef}&redirectData=${encodedRedirectData}`);
@@ -345,16 +418,16 @@ const handleShopperRedirect = asyncHandler(async (req, res) => {
  */
 const getPaymentStatus = asyncHandler(async (req, res) => {
   const { orderRef } = req.params;
-  
+
   if (!orderRef) {
     return res.status(400).json({
       error: 'Order reference is required',
       code: 'MISSING_ORDER_REF'
     });
   }
-  
+
   const status = paymentService.getPaymentStatus(orderRef);
-  
+
   if (!status) {
     return res.status(404).json({
       error: 'Payment not found',
@@ -362,7 +435,7 @@ const getPaymentStatus = asyncHandler(async (req, res) => {
       orderRef
     });
   }
-  
+
   res.json(status);
 });
 
@@ -382,21 +455,21 @@ const getAllPaymentStatuses = asyncHandler(async (req, res) => {
  */
 const recheckPaymentStatus = asyncHandler(async (req, res) => {
   const { orderRef, redirectResult, sessionId } = req.body;
-  
+
   if (!orderRef) {
     return res.status(400).json({
       error: 'Order reference is required',
       code: 'MISSING_ORDER_REF'
     });
   }
-  
+
   if (!redirectResult && !req.body.payload) {
     return res.status(400).json({
       error: 'Redirect result or payload is required',
       code: 'MISSING_PAYMENT_DETAILS'
     });
   }
-  
+
   try {
     // Prepare payment details
     const details = {};
@@ -405,16 +478,16 @@ const recheckPaymentStatus = asyncHandler(async (req, res) => {
     } else if (req.body.payload) {
       details.payload = req.body.payload;
     }
-    
+
     // Submit payment details to Adyen to get updated status
     const response = await adyenService.submitPaymentDetails(details);
-    
+
     // Update stored status
     if (response.resultCode) {
       paymentService.storePaymentStatus(orderRef, response.resultCode);
       console.log(`Payment status re-checked for ${orderRef}: ${response.resultCode}`);
     }
-    
+
     // Return the updated status
     res.json({
       orderRef,
@@ -428,7 +501,7 @@ const recheckPaymentStatus = asyncHandler(async (req, res) => {
       errorCode: error.errorCode,
       orderRef
     });
-    
+
     res.status(500).json({
       error: 'Failed to re-check payment status',
       code: 'RECHECK_ERROR',
@@ -436,9 +509,6 @@ const recheckPaymentStatus = asyncHandler(async (req, res) => {
     });
   }
 });
-
-
-
 
 const createPaymentLink = async (req, res) => {
   try {
@@ -470,12 +540,6 @@ const createPaymentLink = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
 module.exports = {
   createPaymentLink,
   createSession,
@@ -487,6 +551,10 @@ module.exports = {
   // Advanced Flow
   submitPayment,
   submitPaymentDetails,
-  getPaymentMethods
+  getPaymentMethods,
 
+  // ✅ partial payments / ANCV
+  balanceCheckGiftcard,
+  createOrder,
+  cancelOrder
 };

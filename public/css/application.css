@@ -1937,7 +1937,6 @@ a:hover {
     right: 0;
     min-width: 100%;          /* dropdown full width sous le bouton */
   }
-<<<<<<< HEAD
 }
 
 
@@ -2013,6 +2012,330 @@ a:hover {
   to { transform: rotate(360deg); }
 }
 
-=======
+
+
+
+/* ---- Dual brand (network) ---- */
+.dual-brand {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  background: #fff;
 }
->>>>>>> 3ff7b21 (init)
+
+.dual-brand__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(0,0,0,.70);
+  margin-bottom: 8px;
+}
+
+.dual-brand__options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dual-brand__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 12.5px;
+  color: rgba(0,0,0,.85);
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+.dual-brand__pill:hover {
+  border-color: rgba(0,0,0,.22);
+}
+
+.dual-brand__pill.is-selected {
+  border-color: rgba(0,0,0,.32);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.06);
+}
+
+.dual-brand__pill.is-static {
+  cursor: default;
+  background: rgba(0,0,0,.02);
+}
+
+.dual-brand__pill.is-static:hover {
+  border-color: rgba(0,0,0,.12);
+}
+
+.dual-brand__img {
+  height: 18px;
+  display: block;
+}
+
+
+
+
+
+/* ===============================
+   API-only card form polish
+   - Expiry + CVC on one row (CVC narrower)
+=============================== */
+
+/* Ensure secured fields fill width nicely */
+#customCard-container .adyen-checkout__input-wrapper,
+#customCard-container .adyen-checkout__input {
+  width: 100%;
+}
+
+/* Put Expiry + CVC on the same line */
+#customCard-container .adyen-checkout__field--two-in-one {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* Reset nested field spacing inside the row */
+#customCard-container .adyen-checkout__field--two-in-one > .adyen-checkout__field {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Make CVC narrower */
+#customCard-container .adyen-checkout__field--two-in-one > .adyen-checkout__field:last-child {
+  flex: 0 0 34%;
+  min-width: 140px; /* tweak if you want 120/130 */
+}
+
+/* Mobile: stack again (more natural on small screens) */
+@media (max-width: 480px) {
+  #customCard-container .adyen-checkout__field--two-in-one {
+    flex-direction: column;
+  }
+
+  #customCard-container .adyen-checkout__field--two-in-one > .adyen-checkout__field:last-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+/* Small “classy” touch: consistent vertical rhythm */
+#customCard-container .adyen-checkout__field {
+  margin-bottom: 14px;
+}
+
+#customCard-container .adyen-checkout__label {
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: rgba(0,0,0,.78);
+}
+
+/* ===============================
+   API-only page — premium card polish
+=============================== */
+.api-only-page {
+  background: #ffffff;
+}
+
+/* Header line: logo inline + title */
+.api-only-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.api-only-header .payment-method-logo {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.api-only-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.api-only-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.api-only-title-row .payment-method-title {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+/* Badge (small, subtle) */
+.api-only-brand-badge {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.85);
+}
+
+/* Status under title */
+.api-only-status {
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(0,0,0,.55);
+  min-height: 18px;
+}
+
+/* Remove the grey shell feel (your existing .payment-container is grey on other pages) */
+.api-only-page .payment-container {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.api-only-page .payment {
+  padding: 0 !important;
+}
+
+/* The actual white card */
+.api-only-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 17, 44, 0.10);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow:
+    0 18px 50px rgba(15, 23, 42, 0.08),
+    0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+/* Make form spacing consistent */
+.api-only-form .adyen-checkout__field {
+  margin-bottom: 14px;
+}
+
+.api-only-form .adyen-checkout__label {
+  margin-bottom: 6px;
+  font-weight: 650;
+  color: rgba(0,0,0,.78);
+}
+
+/* Inputs: slightly nicer borders */
+.api-only-form .adyen-checkout__input-wrapper {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.api-only-form .adyen-checkout__input {
+  width: 100%;
+  border-radius: 12px;
+}
+
+/* Expiry + CVC on same row (CVC narrower) */
+.api-only-form .adyen-checkout__field--two-in-one {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.api-only-form .adyen-checkout__field--two-in-one > .adyen-checkout__field {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.api-only-form .adyen-checkout__field--two-in-one > .adyen-checkout__field:last-child {
+  flex: 0 0 34%;
+  min-width: 140px;
+}
+
+@media (max-width: 480px) {
+  .api-only-title-row .payment-method-title {
+    font-size: 28px;
+  }
+
+  .api-only-form .adyen-checkout__field--two-in-one {
+    flex-direction: column;
+  }
+
+  .api-only-form .adyen-checkout__field--two-in-one > .adyen-checkout__field:last-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+/* Pay button: more premium feel */
+.api-only-paybtn {
+  border-radius: 12px !important;
+  height: 52px;
+  font-weight: 750;
+  letter-spacing: 0.2px;
+  box-shadow: 0 14px 28px rgba(0, 17, 44, 0.18);
+}
+
+.api-only-paybtn:disabled {
+  box-shadow: none;
+  opacity: 0.75;
+}
+
+/* Helper text */
+.api-only-helper {
+  font-size: 12px;
+  color: rgba(0,0,0,.55);
+  line-height: 1.45;
+  margin-top: 10px;
+}
+
+/* Dual brand container: slightly more aligned with the new card */
+.api-only-page .dual-brand {
+  border-radius: 14px;
+  border: 1px solid rgba(0, 17, 44, 0.10);
+  background: rgba(0,0,0,.01);
+}
+
+
+/* ---- FIX: logo size + title size (balanced) ---- */
+
+/* Make the logo container bigger + prevent shrink */
+.api-only-header .payment-method-logo {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+}
+
+/* If PaymentLogos injects an <img> or <svg>, force it to fill nicely */
+.api-only-header .payment-method-logo img,
+.api-only-header .payment-method-logo svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Title: smaller, responsive, doesn’t explode */
+.api-only-title-row .payment-method-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  max-width: 100%;
+}
+
+/* On small screens, shrink a bit more */
+@media (max-width: 768px) {
+  .api-only-title-row .payment-method-title {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .api-only-title-row .payment-method-title {
+    font-size: 20px;
+  }
+}

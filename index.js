@@ -67,6 +67,9 @@ app.get("/api/payment-status/:orderRef", paymentsController.getPaymentStatus);
 app.post("/api/recheck-payment-status", paymentsController.recheckPaymentStatus);
 app.get("/api/debug/payment-statuses", paymentsController.getAllPaymentStatuses);
 app.post("/api/paymentLinks", paymentsController.createPaymentLink);
+app.post("/api/paymentMethods/balance", paymentsController.balanceCheckGiftcard);
+app.post("/api/orders", paymentsController.createOrder);
+app.post("/api/orders/cancel", paymentsController.cancelOrder);
 
 
 
@@ -85,7 +88,22 @@ app.get("/components/advancedFlow", (req, res) => res.render("componentsAdvanced
 
 
 
-//PayByLink
+
+/* ===========================================================
+   apiOnly
+   =========================================================== */
+app.get("/checkout/apionly", (req, res) => {
+  res.render("apiOnly", {
+    title: "API Only",
+    clientKey: config.adyen.ADYEN_CLIENT_KEY,
+    showCountrySelector: true
+  });
+});
+
+
+/* ===========================================================
+   payByLink
+   =========================================================== */
 app.get("/checkout/paybylink", (req, res) => {
   res.render("payByLink", {
     title: "Pay by Link (API)",
@@ -94,9 +112,10 @@ app.get("/checkout/paybylink", (req, res) => {
 });
 
 
+/* ===========================================================
+   unscheduledCardOnFile
+   =========================================================== */
 
-
-//unscheduledCardOnFile
 app.get("/checkout/unscheduledCardOnFile", (req, res) => {
   res.render("unscheduledCardOnFile", {
     title: "Unscheduled payment using Adyen token",

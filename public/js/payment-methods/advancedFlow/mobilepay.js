@@ -31,7 +31,6 @@ async function createAdyenCheckout(session) {
 
 // Main function to start the checkout process
 async function startCheckout() {
-<<<<<<< HEAD
 
 
   function cleanupLocal3DS() {
@@ -44,8 +43,6 @@ async function startCheckout() {
   window.setAuthOverlay?.(false);
 
 
-=======
->>>>>>> 3ff7b21 (init)
   try {
     // Starting MobilePay checkout
     
@@ -58,10 +55,7 @@ async function startCheckout() {
     }).then(response => response.json());
 
     const checkout = await createAdyenCheckout(session);
-<<<<<<< HEAD
     window.PaymentHandlers.registerCreateFromAction(checkout.createFromAction.bind(checkout));
-=======
->>>>>>> 3ff7b21 (init)
     const mobilepay = new Redirect(checkout, {
       type: 'mobilepay'
     }).mount('#mobilepay-container');

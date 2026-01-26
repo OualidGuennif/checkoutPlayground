@@ -6,11 +6,8 @@ const uuid = () => crypto.randomUUID();
 let componentInstance = null;
 
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> 3ff7b21 (init)
 /* --------------------------------------------------------
    1) Build AdyenCheckout using PaymentHandlers config
 --------------------------------------------------------- */
@@ -70,7 +67,6 @@ function handleOnPaymentFailed(resultCode) {
 --------------------------------------------------------- */
 async function startCheckout(countryCode= 'FR') {
 
-<<<<<<< HEAD
 
   function cleanupLocal3DS() {
   try { window.__threeDSActionComponent?.unmount?.(); } catch (_) {}
@@ -82,8 +78,6 @@ async function startCheckout(countryCode= 'FR') {
   window.setAuthOverlay?.(false);
 
 
-=======
->>>>>>> 3ff7b21 (init)
   if (componentInstance) {
     try { componentInstance.unmount(); } catch (e) {}
     componentInstance = null;
@@ -124,10 +118,7 @@ async function startCheckout(countryCode= 'FR') {
 
     console.log(paymentMethodsResponse);
     const checkout = await createAdyenCheckout(paymentMethodsResponse,additionalSettings);
-<<<<<<< HEAD
     window.PaymentHandlers.registerCreateFromAction(checkout.createFromAction.bind(checkout));
-=======
->>>>>>> 3ff7b21 (init)
     
 
     componentInstance = new Card(checkout, {
