@@ -7,6 +7,10 @@
  * - createSession(): utilise reference + merchantOrderReference si fournis par le controller
  * - submitPayment(): utilise paymentData.reference + paymentData.merchantOrderReference si présents
  * - createOrder(): reference déjà supporté (inchangé)
+ *
+ * ✅ AJOUT (cette demande)
+ * - checkoutAttemptId: supprimé de paymentMethod, envoyé à la racine du payload /payments
+ * - ignore les valeurs non valides (ex: 'fetch-checkoutAttemptId-failed', 'do-not-track')
  */
 
 const { Client, CheckoutAPI } = require("@adyen/api-library");
@@ -69,6 +73,51 @@ function __capAmount(amount, cap) {
     currency: amount.currency,
     value: Math.min(Number(amount.value), Number(cap.value))
   };
+}
+
+/* --------------------------------------------------------
+   ✅ checkoutAttemptId helpers
+   - We remove checkoutAttemptId from paymentMethod (always)
+   - We set checkoutAttemptId at root of /payments when valid
+--------------------------------------------------------- */
+function __isValidCheckoutAttemptId(val) {
+  if (val == null) return false;
+  const s = String(val).trim();
+  if (!s) return false;
+
+  // Known "bad" values you explicitly don't want to send
+  if (s === "fetch-checkoutAttemptId-failed") return false;
+
+  // When analytics disabled in some configs
+  if (s === "do-not-track") return false;
+
+  // Docs: max length 256
+  if (s.length > 256) return false;
+
+  return true;
+}
+
+function __extractCheckoutAttemptId(paymentData = {}) {
+  // Prefer root if already provided by your frontend/controller
+  const root = paymentData.checkoutAttemptId;
+
+  // Fallback: some people stick it in additionalData (optional)
+  const alt =
+    paymentData.additionalData?.checkoutAttemptId ||
+    paymentData.additionalDataNetwork?.checkoutAttemptId;
+
+  // Legacy: web component historically placed it under paymentMethod
+  const pm = paymentData.paymentMethod?.checkoutAttemptId;
+
+  const candidate = root ?? alt ?? pm;
+  return __isValidCheckoutAttemptId(candidate) ? String(candidate).trim() : null;
+}
+
+function __sanitizePaymentMethod(paymentMethod = {}) {
+  // Always remove checkoutAttemptId from paymentMethod (your requirement)
+  const pm = { ...(paymentMethod || {}) };
+  if ("checkoutAttemptId" in pm) delete pm.checkoutAttemptId;
+  return pm;
 }
 
 /* ---------- balance cache (instrument -> balance) ---------- */
@@ -396,6 +445,7 @@ const createSession = async (sessionData) => {
        - AND for giftcard/voucher/ancv: cap by balance (instrument cache)
    - If no "order": normal flow, optional cap by balance for partial methods
    ✅ /payments: reference + merchantOrderReference (if provided)
+   ✅ checkoutAttemptId: root only, NEVER inside paymentMethod
 --------------------------------------------------------- */
 const submitPayment = async (paymentData = {}) => {
   console.log("🟦 submitPayment(): received payload:", {
@@ -408,7 +458,11 @@ const submitPayment = async (paymentData = {}) => {
 
     // ✅ AJOUT
     hasReference: !!paymentData.reference,
-    hasMerchantOrderReference: !!paymentData.merchantOrderReference
+    hasMerchantOrderReference: !!paymentData.merchantOrderReference,
+
+    // ✅ AJOUT (checkoutAttemptId)
+    hasRootCheckoutAttemptId: !!paymentData.checkoutAttemptId,
+    hasPmCheckoutAttemptId: !!paymentData.paymentMethod?.checkoutAttemptId
   });
 
   try {
@@ -480,6 +534,12 @@ const submitPayment = async (paymentData = {}) => {
       }
     }
 
+    // ✅ AJOUT: checkoutAttemptId (root only)
+    const checkoutAttemptId = __extractCheckoutAttemptId(paymentData);
+
+    // ✅ AJOUT: sanitize paymentMethod to remove checkoutAttemptId
+    const sanitizedPaymentMethod = __sanitizePaymentMethod(paymentData.paymentMethod);
+
     const paymentRequest = {
       merchantAccount: config.adyen.ADYEN_MERCHANT_ACCOUNT,
 
@@ -502,12 +562,16 @@ const submitPayment = async (paymentData = {}) => {
       shopperConversionId: paymentData.additionalData?.shopperConversionId ?? undefined,
       shopperIP,
 
-      paymentMethod: paymentData.paymentMethod,
+      // ✅ sanitized payment method (NO checkoutAttemptId inside)
+      paymentMethod: sanitizedPaymentMethod,
 
       // ✅ AJOUT: merchantOrderReference for /payments (digits-only 8 chars)
       ...(paymentData.merchantOrderReference
         ? { merchantOrderReference: paymentData.merchantOrderReference }
         : {}),
+
+      // ✅ AJOUT: checkoutAttemptId at ROOT ONLY (when valid)
+      ...(checkoutAttemptId ? { checkoutAttemptId } : {}),
 
       recurringProcessingModel: isUnscheduledMit
         ? "UnscheduledCardOnFile"
@@ -553,9 +617,11 @@ const submitPayment = async (paymentData = {}) => {
     console.log("🟩 Normalized backend paymentRequest:", {
       reference: paymentRequest.reference,
       merchantOrderReference: paymentRequest.merchantOrderReference,
+      checkoutAttemptId: paymentRequest.checkoutAttemptId,
       amount: paymentRequest.amount,
       hasOrder: !!paymentRequest.order,
-      orderPsp: paymentRequest.order?.pspReference
+      orderPsp: paymentRequest.order?.pspReference,
+      pmHasCheckoutAttemptId: !!paymentRequest.paymentMethod?.checkoutAttemptId
     });
 
     const response = await retryRequest(async () => {

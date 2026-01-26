@@ -193,7 +193,7 @@ const submitPayment = asyncHandler(async (req, res) => {
     hasShopperIP: !!paymentData.additionalDataNetwork.shopperIP,
     hasBaseUrl: !!paymentData.additionalDataNetwork.baseUrl,
     hasShopperReference: !!paymentData.additionalData.shopperReference,
-    hasOrder: !!paymentData.order,
+    hasOrder: !!paymentData.order, 
 
     // ✅ AJOUT
     hasReference: !!paymentData.reference,
