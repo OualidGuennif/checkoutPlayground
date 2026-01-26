@@ -114,6 +114,7 @@ const validateConfig = () => {
   return true;
 };
 
+<<<<<<< HEAD
 function setAuthOverlay(open, label = "Authentification en cours…") {
   const el = document.getElementById("auth-overlay");
   if (!el) return;
@@ -134,6 +135,8 @@ function shouldHideOverlayForResultCode(resultCode) {
 
 
 
+=======
+>>>>>>> 3ff7b21 (init)
 /**
  * Get currency for country
  */
@@ -255,6 +258,10 @@ module.exports = {
   getLocaleForCountry,
   getBaseUrl,
   getClientIp,
+<<<<<<< HEAD
   getDailyShopperReference,
   setAuthOverlay
+=======
+  getDailyShopperReference
+>>>>>>> 3ff7b21 (init)
 };

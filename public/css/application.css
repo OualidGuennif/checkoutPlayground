@@ -1937,6 +1937,7 @@ a:hover {
     right: 0;
     min-width: 100%;          /* dropdown full width sous le bouton */
   }
+<<<<<<< HEAD
 }
 
 
@@ -2012,3 +2013,6 @@ a:hover {
   to { transform: rotate(360deg); }
 }
 
+=======
+}
+>>>>>>> 3ff7b21 (init)
