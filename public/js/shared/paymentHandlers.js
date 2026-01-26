@@ -352,6 +352,7 @@
 
         let response;
         try {
+          console.log(state.data);
           response = await fetch("/api/payments", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
