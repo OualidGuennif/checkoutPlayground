@@ -2,12 +2,49 @@
  * uiOverlay.js
  * Helpers UI (loading overlay + 3DS2 modal)
  * STRICT 3DS: action.type === "threeDS2"
+ *
+ * Fixes:
+ * - Robust scroll lock (counter + restore previous overflow)
+ * - No flash on load
+ * - Overlay always above modal
+ * - If #threeDS2Modal[data-fullscreen="1"] => TRUE fullscreen (card + iframe 100%)
+ * - Otherwise => size to injected iframe width/height attrs
+ * - No close button
  */
 (function () {
-  const Z = {
-    modal: 99999,
-    overlay: 100001 // > modal
-  };
+  "use strict";
+
+  const Z = { modal: 99999, overlay: 100001 };
+
+  /* ---------------------------
+     Scroll lock (robust)
+  ---------------------------- */
+  let __scrollLockCount = 0;
+  let __prevOverflow = "";
+
+  function lockScroll() {
+    if (__scrollLockCount === 0) {
+      __prevOverflow = document.body.style.overflow || "";
+      document.body.style.overflow = "hidden";
+    }
+    __scrollLockCount += 1;
+  }
+
+  function forceUnlockScroll() {
+    __scrollLockCount = 0;
+    document.body.style.overflow = __prevOverflow || "";
+    __prevOverflow = "";
+  }
+
+  function isGridDisplayed(el) {
+    return !!(el && el.style && el.style.display === "grid");
+  }
+
+  function unlockScrollIfNothingOpen() {
+    const overlayOpen = document.getElementById("auth-overlay")?.classList.contains("is-open");
+    const modalOpen = isGridDisplayed(document.getElementById("threeDS2Modal"));
+    if (!overlayOpen && !modalOpen) forceUnlockScroll();
+  }
 
   /* ---------------------------
      AUTH OVERLAY (no flash)
@@ -16,24 +53,20 @@
     const el = document.getElementById("auth-overlay");
     if (!el) return null;
 
-    // Put overlay at document.body root to avoid stacking contexts
-    if (el.parentElement !== document.body) {
-      document.body.appendChild(el);
-    }
+    if (el.parentElement !== document.body) document.body.appendChild(el);
 
-    // Force base state before any "open" call => prevents 1s flash
     el.classList.remove("is-open");
     el.style.display = "none";
 
-    // Inline styles: deterministic + above modal
     Object.assign(el.style, {
       position: "fixed",
       inset: "0",
       zIndex: String(Z.overlay),
+      display: "none",
       placeItems: "center",
       background: "rgba(0,0,0,0.35)",
       padding: "16px",
-      pointerEvents: "auto" // block clicks behind
+      pointerEvents: "auto"
     });
 
     return el;
@@ -49,20 +82,14 @@
     el.classList.toggle("is-open", !!open);
     el.style.display = open ? "grid" : "none";
 
-    // If the 3DS modal is open and we show overlay: keep modal visible behind
-    // Scroll lock only while overlay visible
-    if (open) document.body.style.overflow = "hidden";
-    else if (document.getElementById("threeDS2Modal")?.style.display !== "grid") {
-      document.body.style.overflow = "";
-    }
+    if (open) lockScroll();
+    else unlockScrollIfNothingOpen();
   }
 
-  // Ensure no-flash as early as possible
-  // (runs immediately when script is parsed)
   ensureAuthOverlay();
 
   /* ---------------------------
-     3DS2 MODAL (iframe sized)
+     3DS2 MODAL
   ---------------------------- */
   function getIframeSize(iframe) {
     const wAttr = parseInt(iframe?.getAttribute?.("width") || "", 10);
@@ -85,18 +112,18 @@
       return { modal: null, mount: null, card: null };
     }
 
-    // Hide the close button (requested)
+    // Hide close button
     if (closeBtn) {
       closeBtn.style.display = "none";
       closeBtn.setAttribute("aria-hidden", "true");
       closeBtn.tabIndex = -1;
     }
 
-    // Backdrop
+    // Backdrop base state
     Object.assign(modal.style, {
       position: "fixed",
       inset: "0",
-      display: "none",            // default closed => no flash
+      display: "none",
       placeItems: "center",
       zIndex: String(Z.modal),
       background: "rgba(0,0,0,0.55)",
@@ -106,7 +133,7 @@
     modal.hidden = true;
     modal.setAttribute("aria-hidden", "true");
 
-    // Card default (will be synced to iframe once injected)
+    // Card base state
     Object.assign(card.style, {
       position: "relative",
       width: "min(390px, calc(100vw - 32px))",
@@ -119,7 +146,7 @@
       margin: "0"
     });
 
-    // Mount: full bleed
+    // Mount full bleed inside card
     Object.assign(mount.style, {
       width: "100%",
       height: "100%",
@@ -127,19 +154,50 @@
       padding: "0"
     });
 
-    // Sync card + iframe sizing to the ACS iframe "native" size to avoid blank space
-    function syncToIframe() {
+    function applyFullscreen() {
+      // modal takes the whole viewport
+      modal.style.padding = "0";
+      modal.style.placeItems = "stretch";
+
+      // card truly fullscreen
+      card.style.width = "100vw";
+      card.style.height = "100vh";
+      card.style.borderRadius = "0";
+      card.style.boxShadow = "none";
+
+      // mount full
+      mount.style.width = "100%";
+      mount.style.height = "100%";
+
+      // IMPORTANT: force iframe to fill (override width/height attrs)
+      const iframe = mount.querySelector("iframe");
+      if (iframe) {
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
+        iframe.style.maxWidth = "100%";
+        iframe.style.display = "block";
+        iframe.style.border = "0";
+        iframe.style.margin = "0";
+        iframe.style.padding = "0";
+      }
+    }
+
+    function applySizedToIframe() {
+      // restore centered modal
+      modal.style.padding = "16px";
+      modal.style.placeItems = "center";
+
       const iframe = mount.querySelector("iframe");
       if (!iframe) return;
 
       const { width, height } = getIframeSize(iframe);
 
-      // Card follows iframe dimensions (responsive clamp on viewport)
       card.style.width = `min(${width}px, calc(100vw - 32px))`;
       card.style.height = `min(${height}px, calc(100vh - 32px))`;
+      card.style.borderRadius = "16px";
+      card.style.boxShadow = "0 20px 60px rgba(0,0,0,0.25)";
 
-      // Keep iframe at native width to avoid "white space on the right"
-      // But still clamp on mobile
+      // keep iframe at its native size
       iframe.style.width = `${width}px`;
       iframe.style.height = `${height}px`;
       iframe.style.maxWidth = "100%";
@@ -149,47 +207,50 @@
       iframe.style.padding = "0";
     }
 
-    // Observe when Adyen injects iframe
+    function sync() {
+      const fullscreen = modal.getAttribute("data-fullscreen") === "1";
+      if (fullscreen) applyFullscreen();
+      else applySizedToIframe();
+    }
+
     if (!mount.__iframeObserver) {
-      const obs = new MutationObserver(() => syncToIframe());
+      const obs = new MutationObserver(() => sync());
       obs.observe(mount, { childList: true, subtree: true });
       mount.__iframeObserver = obs;
     }
 
-    // Timing safety (injection can be async)
-    setTimeout(syncToIframe, 0);
-    setTimeout(syncToIframe, 50);
-    setTimeout(syncToIframe, 200);
+    setTimeout(sync, 0);
+    setTimeout(sync, 50);
+    setTimeout(sync, 200);
 
-    return { modal, mount, card };
+    return { modal, mount, card, sync };
   }
 
-  // Ensure modal base state early => no flash
   ensure3DS2Modal();
 
   function setThreeDS2Modal(open, { clear = false } = {}) {
-    const { modal, mount } = ensure3DS2Modal();
+    const { modal, mount, sync } = ensure3DS2Modal();
     if (!modal) return;
 
     if (open) {
       modal.hidden = false;
       modal.setAttribute("aria-hidden", "false");
       modal.style.display = "grid";
-      document.body.style.overflow = "hidden";
+      lockScroll();
+
+      // re-apply sizing mode immediately
+      try { sync?.(); } catch (_) {}
     } else {
       modal.hidden = true;
       modal.setAttribute("aria-hidden", "true");
       modal.style.display = "none";
-
-      // Restore scroll only if auth overlay isn't open
-      const overlayOpen = document.getElementById("auth-overlay")?.classList.contains("is-open");
-      if (!overlayOpen) document.body.style.overflow = "";
+      modal.setAttribute("data-fullscreen", "0");
 
       if (clear && mount) mount.innerHTML = "";
+      unlockScrollIfNothingOpen();
     }
   }
 
-  // STRICT: only this
   function isThreeDS2Action(action) {
     return action?.type === "threeDS2";
   }
@@ -198,9 +259,9 @@
     return ["Authorised", "Refused", "Cancelled", "Error", "Pending", "Received"].includes(resultCode);
   }
 
-  // Expose
   window.setAuthOverlay = setAuthOverlay;
   window.setThreeDS2Modal = setThreeDS2Modal;
   window.isThreeDS2Action = isThreeDS2Action;
   window.shouldHideOverlayForResultCode = shouldHideOverlayForResultCode;
+  window.__forceUnlockScroll = forceUnlockScroll;
 })();

@@ -29,6 +29,8 @@
   // ✅ AJOUT: shared references (stable across partial payments within the same checkout)
   let __unifiedReference = null;         // "${orderDigits}||${storeId}||${refHash}"
   let __merchantOrderReference8 = null;  // "12345678" digits-only
+  // ✅ AJOUT: browserInfo cache (for sizing 3DS challenge)
+  let __cachedBrowserInfo = null;  // last known browserInfo from state.data
 
   /* -----------------------------
      UI helpers (delegate to uiOverlay.js if present)
@@ -138,6 +140,53 @@
       if (__baseAmount) __setCheckoutAmount(__baseAmount);
     }, 0);
   }
+
+
+  //3DS modal size
+
+    function __cacheBrowserInfo(browserInfo) {
+    if (!browserInfo) return;
+    const w = Number(browserInfo.screenWidth);
+    const h = Number(browserInfo.screenHeight);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return;
+    __cachedBrowserInfo = { ...browserInfo };
+  }
+
+  function __getBestBrowserInfo(stateData) {
+    // Priority: state.data.browserInfo > cached > fallback to screen API
+    if (stateData?.browserInfo) return stateData.browserInfo;
+    if (__cachedBrowserInfo) return __cachedBrowserInfo;
+
+    // fallback
+    return {
+      screenWidth: window.screen?.width,
+      screenHeight: window.screen?.height
+    };
+  }
+
+  // map viewport -> Adyen window size buckets
+  function __computeChallengeWindowSize(browserInfo) {
+    const w = Number(browserInfo?.screenWidth);
+    const h = Number(browserInfo?.screenHeight);
+
+    // safe defaults
+    if (!Number.isFinite(w) || !Number.isFinite(h)) return "02";
+
+    // Rule of thumb:
+    // - small mobile => 05 (full screen)
+    // - mid => 02
+    // - large => 03 / 04
+    // You can tweak thresholds anytime.
+    const minSide = Math.min(w, h);
+
+    if (minSide <= 480) return "05";          // phones
+    if (minSide <= 768) return "02";          // small tablets
+    if (minSide <= 900) return "03";          // laptop-ish
+    return "04";                              // large screens
+  }
+
+
+
 
   /* -----------------------------
      Result routing
@@ -266,9 +315,21 @@
           }
           mountEl.innerHTML = "";
 
-          const actionComponent = __createFromAction(action);
+          // check 3DS size
+          const bi = __getBestBrowserInfo(null); // cached-first
+          const challengeWindowSizeComputed = __computeChallengeWindowSize(bi);
+
+          // FULLSCREEN FLAG 
+          document.getElementById("threeDS2Modal")?.setAttribute(
+            "data-fullscreen",
+            challengeWindowSizeComputed === "05" ? "1" : "0"
+          );
+
+          UI.setThreeDS2Modal(true);
+
+          const actionComponent = __createFromAction(action, { challengeWindowSize: challengeWindowSizeComputed });
           __active3DSComponent = actionComponent;
-          actionComponent.mount("#threeDS2ActionMount");
+          actionComponent.mount("#threeDS2ActionMount")
 
           return actionComponent;
         }
@@ -349,6 +410,8 @@
         if (!state?.isValid) return actions.reject();
 
         UI.setAuthOverlay(true, "Authentification en cours…");
+        // cache browserInfo when present
+        __cacheBrowserInfo(state.data?.browserInfo);
 
         let response;
         try {
@@ -397,6 +460,7 @@
 
       onAdditionalDetails: async (state, component, actions) => {
         UI.setAuthOverlay(true, "Validation en cours…");
+        __cacheBrowserInfo(state?.data?.browserInfo);
 
         let payload;
         if (state?.data?.redirectResult) payload = { details: { redirectResult: state.data.redirectResult } };
