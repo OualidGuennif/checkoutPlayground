@@ -1,13 +1,5 @@
 /**
  * paymentHandlers.js
- * Shared Payment Handlers (Sessions + Advanced)
- * 3DS detection STRICT: action.type === "threeDS2"
- *
- * Security posture:
- * - Does NOT expose checkout instance globally
- * - Only receives a bound createFromAction(action) function
- * - Keeps mounted 3DS action component ref private
- * - Freezes exported API and locks it on window
  */
 
 (function () {
@@ -19,18 +11,27 @@
   let __createFromAction = null;     // function(action) => component
   let __active3DSComponent = null;   // mounted action component (private)
 
-  // ✅ AJOUT: safe hook pour checkout.update(...) (comme createFromAction)
+  // safe hook pour checkout.update(...) (comme createFromAction)
   let __checkoutUpdate = null;       // function(payload) => void
 
-  // ✅ AJOUT: amount memory (base + current) to keep Drop-in amount in sync
+  //  amount memory (base + current) to keep Drop-in amount in sync
   let __baseAmount = null;           // { value, currency } initial amount passed in options
   let __lastKnownAmount = null;      // { value, currency } last applied amount
 
-  // ✅ AJOUT: shared references (stable across partial payments within the same checkout)
+  //  shared references (stable across partial payments within the same checkout)
   let __unifiedReference = null;         // "${orderDigits}||${storeId}||${refHash}"
   let __merchantOrderReference8 = null;  // "12345678" digits-only
-  // ✅ AJOUT: browserInfo cache (for sizing 3DS challenge)
+
+  // ✅ NEW: reference reset hook (provided by page)
+  // returns: { unifiedReference, merchantOrderReference8 }
+  let __onReferenceReset = null;
+
+  //  browserInfo cache (for sizing 3DS challenge)
   let __cachedBrowserInfo = null;  // last known browserInfo from state.data
+
+  // ✅ NEW: session caches (client-side)
+  const __balanceSessionCache = new Map(); // instrumentKey -> { balance: {currency,value}, cachedAt }
+  let __sessionRemainingAmount = null;     // { currency, value } updated via onOrderUpdated
 
   /* -----------------------------
      UI helpers (delegate to uiOverlay.js if present)
@@ -66,7 +67,7 @@
     __createFromAction = fn;
   }
 
-  // ✅ AJOUT: register checkout.update binder
+  // register checkout.update binder
   function registerCheckoutUpdate(fn) {
     if (typeof fn !== "function") {
       throw new TypeError("[PaymentHandlers] registerCheckoutUpdate expects a function");
@@ -74,7 +75,15 @@
     __checkoutUpdate = fn;
   }
 
-  // ✅ AJOUT: wrapper safe
+  // ✅ NEW: register ref reset callback
+  function registerReferenceReset(fn) {
+    if (typeof fn !== "function") {
+      throw new TypeError("[PaymentHandlers] registerReferenceReset expects a function");
+    }
+    __onReferenceReset = fn;
+  }
+
+  //  wrapper
   function __safeCheckoutUpdate(payload) {
     if (typeof __checkoutUpdate !== "function") {
       console.warn("[PaymentHandlers] checkout.update not registered — cannot update Drop-in state");
@@ -87,7 +96,7 @@
     }
   }
 
-  // ✅ AJOUT: normalize + set checkout amount (guarded)
+  // normalize + set checkout amount (guarded)
   function __normalizeAmount(a) {
     if (!a) return null;
     const cur = a.currency;
@@ -110,21 +119,13 @@
     }
 
     __lastKnownAmount = norm;
-    __safeCheckoutUpdate({ amount: norm }); // ✅ NOTE: "amount" (not "amout")
-  }
-
-  // ✅ AJOUT: sync amount from order.remainingAmount (truth) if present
-  function __syncAmountFromOrder(order) {
-    const remaining = order?.remainingAmount;
-    const norm = __normalizeAmount(remaining);
-    if (norm) __setCheckoutAmount(norm);
+    __safeCheckoutUpdate({ amount: norm });
   }
 
   // ✅ AJOUT: reset order UI + restore amount after cancel
   function __resetOrderAfterCancel(order) {
     if (!order) return;
 
-    // Strategy A (doc-ish): remove remainingAmount value/currency
     const cleanedOrder = {
       ...order,
       remainingAmount: { currency: undefined, value: undefined }
@@ -132,19 +133,58 @@
 
     __safeCheckoutUpdate({ order: cleanedOrder });
 
-    // Strategy B (fallback): hard reset order (certain versions behave better)
     setTimeout(() => {
       __safeCheckoutUpdate({ order: null });
 
-      // ✅ CRITICAL: restore amount back to initial total (100€)
       if (__baseAmount) __setCheckoutAmount(__baseAmount);
     }, 0);
   }
 
+  /* -----------------------------
+     ✅ NEW: client-side balance cache helpers
+  ------------------------------ */
 
-  //3DS modal size
+  async function __sha256Hex(input) {
+    const s = String(input);
+    if (window.crypto?.subtle) {
+      const buf = new TextEncoder().encode(s);
+      const digest = await window.crypto.subtle.digest("SHA-256", buf);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    return `fallback-${s}`;
+  }
 
-    function __cacheBrowserInfo(browserInfo) {
+  function __getInstrumentIdentifier(paymentMethod = {}) {
+    return paymentMethod.encryptedCardNumber || paymentMethod.number || null;
+  }
+
+  async function __getInstrumentKey(paymentMethod = {}) {
+    const id = __getInstrumentIdentifier(paymentMethod);
+    if (!id) return null;
+
+    const s = String(id);
+    if (s.includes("*")) return null; // refuse masked
+
+    return await __sha256Hex(s);
+  }
+
+  function __capAmount(amount, cap) {
+    const a = __normalizeAmount(amount);
+    const c = __normalizeAmount(cap);
+    if (!a || !c) return a || amount || null;
+    if (a.currency !== c.currency) return a;
+    return { currency: a.currency, value: Math.min(Number(a.value), Number(c.value)) };
+  }
+
+  function __resetSessionCaches() {
+    __balanceSessionCache.clear();
+    __sessionRemainingAmount = null;
+  }
+
+  /* -----------------------------
+     3DS modal size
+  ------------------------------ */
+  function __cacheBrowserInfo(browserInfo) {
     if (!browserInfo) return;
     const w = Number(browserInfo.screenWidth);
     const h = Number(browserInfo.screenHeight);
@@ -153,40 +193,28 @@
   }
 
   function __getBestBrowserInfo(stateData) {
-    // Priority: state.data.browserInfo > cached > fallback to screen API
     if (stateData?.browserInfo) return stateData.browserInfo;
     if (__cachedBrowserInfo) return __cachedBrowserInfo;
 
-    // fallback
     return {
       screenWidth: window.screen?.width,
       screenHeight: window.screen?.height
     };
   }
 
-  // map viewport -> Adyen window size buckets
   function __computeChallengeWindowSize(browserInfo) {
     const w = Number(browserInfo?.screenWidth);
     const h = Number(browserInfo?.screenHeight);
 
-    // safe defaults
     if (!Number.isFinite(w) || !Number.isFinite(h)) return "02";
 
-    // Rule of thumb:
-    // - small mobile => 05 (full screen)
-    // - mid => 02
-    // - large => 03 / 04
-    // You can tweak thresholds anytime.
     const minSide = Math.min(w, h);
 
-    if (minSide <= 480) return "05";          // phones
-    if (minSide <= 768) return "02";          // small tablets
-    if (minSide <= 900) return "03";          // laptop-ish
-    return "04";                              // large screens
+    if (minSide <= 480) return "05";
+    if (minSide <= 768) return "02";
+    if (minSide <= 900) return "03";
+    return "04";
   }
-
-
-
 
   /* -----------------------------
      Result routing
@@ -214,7 +242,6 @@
       stack: error?.stack,
       component
     });
-    window.location.href = "/result/error";
   }
 
   /* -----------------------------
@@ -271,19 +298,16 @@
     const {
       clientKey,
       environment = "test",
-      amount = { value: 999, currency: "EUR" },
-      locale = "en_US",
-      countryCode = "NL",
+      amount = { value: 9999, currency: "EUR" },
+      locale = "fr-FR",
+      countryCode = "FR",
       showPayButton = true,
       translations = {}
     } = options;
 
-    // ✅ AJOUT: capture base amount once (used to restore after cancel)
-    // (we keep it stable across giftcard add/remove)
     __baseAmount = __normalizeAmount(amount) || __baseAmount;
     __lastKnownAmount = __normalizeAmount(amount) || __lastKnownAmount;
 
-    // ✅ AJOUT: capture shared references once
     __unifiedReference = options.unifiedReference || __unifiedReference;
     __merchantOrderReference8 = options.merchantOrderReference8 || __merchantOrderReference8;
 
@@ -315,11 +339,9 @@
           }
           mountEl.innerHTML = "";
 
-          // check 3DS size
-          const bi = __getBestBrowserInfo(null); // cached-first
+          const bi = __getBestBrowserInfo(null);
           const challengeWindowSizeComputed = __computeChallengeWindowSize(bi);
 
-          // FULLSCREEN FLAG 
           document.getElementById("threeDS2Modal")?.setAttribute(
             "data-fullscreen",
             challengeWindowSizeComputed === "05" ? "1" : "0"
@@ -329,7 +351,7 @@
 
           const actionComponent = __createFromAction(action, { challengeWindowSize: challengeWindowSizeComputed });
           __active3DSComponent = actionComponent;
-          actionComponent.mount("#threeDS2ActionMount")
+          actionComponent.mount("#threeDS2ActionMount");
 
           return actionComponent;
         }
@@ -360,7 +382,30 @@
           })
         })
           .then(r => r.json())
-          .then(balanceResponse => resolve(balanceResponse))
+          .then(async (balanceResponse) => {
+            // cache balance 
+            try {
+              const instrumentKey = await __getInstrumentKey(data.paymentMethod);
+              const bal = balanceResponse?.balance;
+
+              if (instrumentKey && bal?.currency && bal?.value != null) {
+                __balanceSessionCache.set(instrumentKey, {
+                  balance: { currency: bal.currency, value: Number(bal.value) },
+                  cachedAt: Date.now()
+                });
+              } else {
+                console.log("⚠️ Balance NOT cached on client (missing key or balance).", {
+                  hasKey: !!instrumentKey,
+                  hasBalance: !!bal,
+                  type: data?.paymentMethod?.type
+                });
+              }
+            } catch (e) {
+              console.log("⚠️ Balance client cache error (ignored):", e);
+            }
+
+            resolve(balanceResponse);
+          })
           .catch(err => reject(err));
       },
 
@@ -371,7 +416,6 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               amount: data.amount ?? amount,
-              // ✅ AJOUT: force SAME reference for /orders
               reference: __unifiedReference || data.reference || `ORDER-${Date.now()}`
             })
           });
@@ -382,36 +426,127 @@
         }
       },
 
-      // ✅ FIX: parse order correctly + reset Drop-in order state after cancel
-      onOrderCancel: (orderOrData) => {
-        const order = orderOrData?.order ? orderOrData.order : orderOrData;
+      onOrderUpdated: async (orderStatus) => {
+        const rem = orderStatus?.order?.remainingAmount;
+        const norm = __normalizeAmount(rem);
+        if (norm) __sessionRemainingAmount = norm;
 
-        console.log("[onOrderCancel] payload:", orderOrData);
-        console.log("[onOrderCancel] normalized order:", order);
+        console.log(orderStatus);
+        console.log(orderStatus?.order?.remainingAmount?.value);
+      },
 
-        return fetch("/api/orders/cancel", {
+      onPaymentMethodsRequest: async (data, { resolve, reject }) => {
+        console.log(data.order);
+
+        try {
+          const r = await fetch(`/api/paymentMethods`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              countryCode,
+              order: data.order,
+              amount,
+              shopperConversionId,
+              shopperReference,
+              shopperLocale: data.locale
+            })
+          });
+          const paymentsMethodsResponse = await r.json();
+
+          resolve(paymentsMethodsResponse);
+        } catch (e) {
+          reject(e);
+        }
+      },
+
+      // critical order to avoid race conditions
+      onOrderCancel: async (data) => {
+        const order = data?.order ? data.order : data;
+
+        console.log("[onOrderCancel] order:", order?.pspReference);
+
+        // 1) backend cancel
+        const cancelResponse = await fetch("/api/orders/cancel", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ order })
-        })
-          .then(r => r.json())
-          .then(cancelResponse => {
-            // ✅ update UI state (remove applied giftcard line)
-            __resetOrderAfterCancel(order);
+        }).then(r => r.json());
 
-            // ✅ ALSO: ensure amount is restored immediately (some UIs render before timeout)
-            if (__baseAmount) __setCheckoutAmount(__baseAmount);
+        console.log("[onOrderCancel] cancelResponse:", cancelResponse);
 
-            return cancelResponse;
+        // ✅ rotate ONLY the UUID part of the reference (keep orderDigits/merchantOrderReference8 stable)
+        if (typeof __onReferenceReset === "function") {
+          try {
+            const next = __onReferenceReset();
+            if (next?.unifiedReference) __unifiedReference = next.unifiedReference;
+            if (next?.merchantOrderReference8) __merchantOrderReference8 = next.merchantOrderReference8;
+          } catch (e) {
+            console.warn("[PaymentHandlers] reference reset failed (ignored):", e);
+          }
+        }
+
+        // reset local caches for safety
+        __resetSessionCaches();
+
+        // purge order in Drop-in
+        __safeCheckoutUpdate({ order: null });
+
+        // next tick => avoid the last dropin state
+        setTimeout(() => {
+          __safeCheckoutUpdate({
+            paymentMethodsResponse,
+            amount: (__baseAmount ? __baseAmount : amount)
           });
+        }, 0);
+
+        return cancelResponse;
       },
 
       onSubmit: async (state, component, actions) => {
         if (!state?.isValid) return actions.reject();
 
-        UI.setAuthOverlay(true, "Authentification en cours…");
-        // cache browserInfo when present
+        UI.setAuthOverlay(true, "Autorisation en cours…");
         __cacheBrowserInfo(state.data?.browserInfo);
+
+        //  inject holderName (custom HTML input) into paymentMethod if present
+        // - By default, Adyen puts card data under state.data.paymentMethod
+        // - In API-only (secured fields) holderName is NOT a secured field, so we force-add it if available
+        const holderName = document.getElementById("holderName")?.value?.trim();
+        if (holderName) {
+          state.data.paymentMethod = state.data.paymentMethod || {};
+          state.data.paymentMethod.holderName = holderName;
+        }
+
+        
+
+        // compute amount client-side (best effort)
+        let amountToSend = state.data?.amount ?? amount;
+
+        try {
+          const hasOrder = !!state.data?.order;
+
+          if (hasOrder) {
+            if (__sessionRemainingAmount) {
+              amountToSend = __capAmount(amountToSend, __sessionRemainingAmount);
+            }
+
+            const instrumentKey = await __getInstrumentKey(state.data?.paymentMethod);
+            if (instrumentKey && __balanceSessionCache.has(instrumentKey)) {
+              const cached = __balanceSessionCache.get(instrumentKey);
+              if (cached?.balance) {
+                amountToSend = __capAmount(amountToSend, cached.balance);
+              }
+            } else {
+              console.log("ℹ️ No client balance cap applied (missing cache entry).", {
+                hasKey: !!instrumentKey,
+                cacheSize: __balanceSessionCache.size,
+                pmType: state.data?.paymentMethod?.type
+              });
+            }
+          }
+        } catch (e) {
+          console.log("⚠️ Client amount capping failed (ignored):", e);
+        }
 
         let response;
         try {
@@ -422,10 +557,10 @@
             body: JSON.stringify({
               ...state.data,
 
-              // ✅ AJOUT: force SAME reference for ALL /payments (all partial payments)
-              reference: __unifiedReference || state.data?.reference,
+              // enforce amount chosen client-side
+              amount: amountToSend,
 
-              // ✅ AJOUT: digits-only 8 chars (ONLY for /payments and /sessions)
+              reference: __unifiedReference || state.data?.reference,
               merchantOrderReference: __merchantOrderReference8 || state.data?.merchantOrderReference,
 
               additionalData: {
@@ -451,33 +586,22 @@
           return actions.reject();
         }
 
-        // ✅ AJOUT: keep Drop-in amount synced with remainingAmount after partial payment
-        __syncAmountFromOrder(order);
-
         patchHandleActionToModal(component);
         return actions.resolve({ resultCode, action, order, donationToken });
       },
 
       onAdditionalDetails: async (state, component, actions) => {
-        UI.setAuthOverlay(true, "Validation en cours…");
+        console.log(state);
+        console.log(state.data);
+        UI.setAuthOverlay(true, "Authentification en cours…");
         __cacheBrowserInfo(state?.data?.browserInfo);
-
-        let payload;
-        if (state?.data?.redirectResult) payload = { details: { redirectResult: state.data.redirectResult } };
-        else if (state?.data?.paymentData && state?.data?.details) payload = { paymentData: state.data.paymentData, details: state.data.details };
-        else if (state?.data?.details) payload = { details: state.data.details };
-        else {
-          UI.setAuthOverlay(false);
-          cleanup3DSModal();
-          return actions.reject();
-        }
 
         let response;
         try {
           response = await fetch("/api/payments/details", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+            body: state.data ? JSON.stringify(state.data) : "",
           }).then(r => r.json());
         } catch (_) {
           UI.setAuthOverlay(false);
@@ -492,9 +616,6 @@
           cleanup3DSModal();
           return actions.reject();
         }
-
-        // ✅ AJOUT: payments/details can also return remainingAmount -> keep synced
-        __syncAmountFromOrder(order);
 
         if (!action && resultCode && UI.shouldHideOverlayForResultCode(resultCode)) {
           cleanup3DSModal();
@@ -547,7 +668,8 @@
   ------------------------------ */
   const PaymentHandlers = Object.freeze({
     registerCreateFromAction,
-    registerCheckoutUpdate, // ✅ AJOUT
+    registerCheckoutUpdate,
+    registerReferenceReset, // ✅ NEW
     cleanup3DSModal,
     handleOnPaymentCompleted,
     handleOnPaymentFailed,

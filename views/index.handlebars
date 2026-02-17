@@ -52,47 +52,7 @@
       </article>
     </div>
 
-    <!-- Ligne 2 : Pay by Link sous Sessions -->
-    <div class="flows-row">
-      <article class="flow-card-simple">
-        <h2>Pay by Link</h2>
-        <p class="flow-subtitle">
-          Create a payment link via API using the selected country &amp; locale.
-        </p>
-
-        <div class="flow-actions single">
-          <a href="/checkout/paybylink" class="flow-link-primary">
-            Create a payment link
-          </a>
-        </div>
-
-        <p class="flow-caption">
-          Ideal for invoices, remote payments, or quick back-office tests.
-        </p>
-      </article>
-
-  <article class="flow-card-simple">
-    <h2>Unscheduled Payments</h2>
-    <p class="flow-subtitle">
-      Charge a stored card without shopper interaction using a tokenised payment instrument.
-    </p>
-
-    <div class="flow-actions single">
-      <a href="/checkout/unscheduledCardOnFile" class="flow-link-primary">
-        Open Unscheduled Payment Tool
-      </a>
-    </div>
-
-    <p class="flow-caption">
-      Perfect for subscriptions, retries, or post-authorization operations.
-    </p>
-  </article>
-</div>
-
-
-
-
-    <!-- Ligne 2 : Pay by Link sous Sessions -->
+    <!-- Ligne 2 : API-only (3ème position) + Unscheduled -->
     <div class="flows-row">
       <article class="flow-card-simple">
         <h2>API-only (encrypted cards)</h2>
@@ -111,21 +71,43 @@
         </p>
       </article>
 
+      <article class="flow-card-simple">
+        <h2>Unscheduled Payments</h2>
+        <p class="flow-subtitle">
+          Charge a stored card without shopper interaction using a tokenised payment instrument.
+        </p>
 
-</div>
+        <div class="flow-actions single">
+          <a href="/checkout/unscheduledCardOnFile" class="flow-link-primary">
+            Open Unscheduled Payment Tool
+          </a>
+        </div>
 
+        <p class="flow-caption">
+          Perfect for subscriptions, retries, or post-authorization operations.
+        </p>
+      </article>
+    </div>
 
+    <!-- Ligne 3 : Pay by Link (en dernier) -->
+    <div class="flows-row">
+      <article class="flow-card-simple">
+        <h2>Pay by Link</h2>
+        <p class="flow-subtitle">
+          Create a payment link via API using the selected country &amp; locale.
+        </p>
 
+        <div class="flow-actions single">
+          <a href="/checkout/paybylink" class="flow-link-primary">
+            Create a payment link
+          </a>
+        </div>
 
-
-
-
-
-
-
-
-
-
+        <p class="flow-caption">
+          Ideal for invoices, remote payments, or quick back-office tests.
+        </p>
+      </article>
+    </div>
 
   </section>
 </div>

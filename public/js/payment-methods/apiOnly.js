@@ -339,13 +339,20 @@ async function startCheckout(countryCode = "FR") {
   };
 
   try {
-    const paymentMethodsResponse = await fetch(
-      `/api/paymentMethods?country=${encodeURIComponent(countryCode)}&shopperConversionId=${encodeURIComponent(shopperConversionId)}&shopperReference=${encodeURIComponent(shopperReference)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      }
-    ).then((res) => res.json());
+    const r = await fetch(`/api/paymentMethods`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        countryCode,
+        amount: { value: amountValue, currency: currency },
+        shopperConversionId,
+        shopperReference,
+        shopperLocale: getLocaleForCountry(countryCode)
+      })
+    });
+    const paymentMethodsResponse = await r.json();
+
+    console.log(paymentMethodsResponse);
 
     const checkout = await createAdyenCheckout(paymentMethodsResponse, additionalSettings);
 

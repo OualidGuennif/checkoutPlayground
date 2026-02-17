@@ -203,6 +203,8 @@ const submitPayment = asyncHandler(async (req, res) => {
   try {
     const response = await adyenService.submitPayment(paymentData);
 
+    console.log(response);
+
     console.log("submitPayment SUCCESS:", {
       resultCode: response.resultCode,
       pspReference: response.pspReference
@@ -262,39 +264,16 @@ const submitPaymentDetails = asyncHandler(async (req, res) => {
  * Get payment methods (Advanced Flow)
  */
 const getPaymentMethods = asyncHandler(async (req, res) => {
-  const selectedCountry = req.query.country;
-  const selectedShopperConversionId = req.query.shopperConversionId;
-  const selectedShopperReference = req.query.shopperReference;
-  const selectedAmount = req.query.amount;
 
   console.log("=== /api/paymentMethods (ADVANCED FLOW) ===");
+  
+  const paymentMethodsData = req.body;
+  console.log(paymentMethodsData);
 
-  // 1️⃣ Lire les données du body (POST)
-  const {
-    countryCode = selectedCountry,
-    amount = { currency: "EUR", value: selectedAmount },
-    shopperLocale = getLocaleForCountry(selectedCountry),
-    shopperConversionId = selectedShopperConversionId,
-    shopperReference = selectedShopperReference
-  } = req.body || {};
-
-  console.log("Requesting PMs with:", {
-    countryCode,
-    amount,
-    shopperLocale,
-    shopperConversionId,
-    shopperReference
-  });
 
   try {
     // 2️⃣ Appel Adyen
-    const response = await adyenService.getPaymentMethods(
-      countryCode,
-      amount,
-      shopperLocale,
-      shopperConversionId,
-      shopperReference
-    );
+    const response = await adyenService.getPaymentMethods(paymentMethodsData);
 
     console.log("Payment methods retrieved:", {
       pmCount: response.paymentMethods?.length || 0
